@@ -46,7 +46,7 @@
                 </div>
                 <div class="stat-info">
                     <h3>Total Residents</h3>
-                    <p class="count">1,245</p>
+                    <p class="count" id="total-residents">0</p>
                 </div>
             </div>
             <div class="stat-card">
@@ -55,7 +55,7 @@
                 </div>
                 <div class="stat-info">
                     <h3>Barangay Officials</h3>
-                    <p class="count">15</p>
+                    <p class="count" id="total-officials">0</p>
                 </div>
             </div>
             <div class="stat-card">
@@ -64,7 +64,7 @@
                 </div>
                 <div class="stat-info">
                     <h3>Pending Requests</h3>
-                    <p class="count">24</p>
+                    <p class="count" id="pending-requests">0</p>
                 </div>
             </div>
             <div class="stat-card">
@@ -73,7 +73,7 @@
                 </div>
                 <div class="stat-info">
                     <h3>Upcoming Events</h3>
-                    <p class="count">8</p>
+                    <p class="count" id="upcoming-events">0</p>
                 </div>
             </div>
         </div>
@@ -87,7 +87,7 @@
                     <li><a href="#residents"><i class="fas fa-users"></i> Residents</a></li>
                     <li><a href="#officials"><i class="fas fa-user-tie"></i> Officials</a></li>
                     <li><a href="#documents"><i class="fas fa-file-alt"></i> Documents</a></li>
-                    <li><a href="#complaints"><i class="fas fa-comment-alt"></i> Complaints <span class="notification-badge">24</span></a></li>
+                    <li><a href="#complaints"><i class="fas fa-comment-alt"></i> Complaints <span class="notification-badge" id="complaints-badge">0</span></a></li>
                     <li><a href="#events"><i class="fas fa-calendar-alt"></i> Events</a></li>
                     <li><a href="#announcements"><i class="fas fa-bullhorn"></i> Announcements</a></li>
                     <li><a href="#analytics"><i class="fas fa-chart-line"></i> Analytics</a></li>
@@ -99,43 +99,8 @@
                     <h2>Recent Activity</h2>
                     <a href="#" class="view-all">View All</a>
                 </div>
-                <div class="activity-list">
-                    <div class="activity-item">
-                        <div class="activity-icon new-user">
-                            <i class="fas fa-user-plus"></i>
-                        </div>
-                        <div class="activity-details">
-                            <p>New resident registered</p>
-                            <span class="timestamp">5 minutes ago</span>
-                        </div>
-                    </div>
-                    <div class="activity-item">
-                        <div class="activity-icon document">
-                            <i class="fas fa-file-alt"></i>
-                        </div>
-                        <div class="activity-details">
-                            <p>Document request approved</p>
-                            <span class="timestamp">1 hour ago</span>
-                        </div>
-                    </div>
-                    <div class="activity-item">
-                        <div class="activity-icon event">
-                            <i class="fas fa-calendar-plus"></i>
-                        </div>
-                        <div class="activity-details">
-                            <p>New event scheduled</p>
-                            <span class="timestamp">3 hours ago</span>
-                        </div>
-                    </div>
-                    <div class="activity-item">
-                        <div class="activity-icon settings">
-                            <i class="fas fa-cog"></i>
-                        </div>
-                        <div class="activity-details">
-                            <p>System settings updated</p>
-                            <span class="timestamp">Yesterday</span>
-                        </div>
-                    </div>
+                <div class="activity-list" id="activity-list">
+                    <p class="loading">Loading activities...</p>
                 </div>
             </div>
         </section>
@@ -157,45 +122,9 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="complaints-table-body">
                     <tr>
-                        <td>BCMS-2025-001</td>
-                        <td>Broken Street Light</td>
-                        <td>Juan Dela Cruz</td>
-                        <td>Mar 10, 2025</td>
-                        <td><span class="status in-progress">In Progress</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn edit"><i class="fas fa-edit"></i></button>
-                                <button class="btn delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>BCMS-2025-002</td>
-                        <td>Garbage Collection Issue</td>
-                        <td>Maria Santos</td>
-                        <td>Mar 5, 2025</td>
-                        <td><span class="status resolved">Resolved</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn edit"><i class="fas fa-edit"></i></button>
-                                <button class="btn delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>BCMS-2025-003</td>
-                        <td>Noisy Neighbor</td>
-                        <td>Pedro Reyes</td>
-                        <td>Feb 28, 2025</td>
-                        <td><span class="status escalated">Escalated</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn edit"><i class="fas fa-edit"></i></button>
-                                <button class="btn delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
+                        <td colspan="6" class="loading">Loading complaints...</td>
                     </tr>
                 </tbody>
             </table>
@@ -216,50 +145,9 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="users-table-body">
                     <tr>
-                        <td>Juan Dela Cruz</td>
-                        <td>juan@example.com</td>
-                        <td><span class="role resident">Resident</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn edit"><i class="fas fa-edit"></i></button>
-                                <button class="btn delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Maria Santos</td>
-                        <td>maria@example.com</td>
-                        <td><span class="role official">Official</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn edit"><i class="fas fa-edit"></i></button>
-                                <button class="btn delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Pedro Reyes</td>
-                        <td>pedro@example.com</td>
-                        <td><span class="role resident">Resident</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn edit"><i class="fas fa-edit"></i></button>
-                                <button class="btn delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Barangay Admin</td>
-                        <td>admin01-barangay@gmail.com</td>
-                        <td><span class="role admin">Admin</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="btn edit"><i class="fas fa-edit"></i></button>
-                                <button class="btn delete"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
+                        <td colspan="4" class="loading">Loading users...</td>
                     </tr>
                 </tbody>
             </table>
@@ -269,17 +157,17 @@
         <section class="card-grid" style="margin-top: 40px;">
             <div class="card">
                 <h3>Complaint Analytics</h3>
-                <p>Total complaints: 125</p>
-                <p>Resolved: 89 (71%)</p>
-                <p>In progress: 28 (22%)</p>
-                <p>Escalated: 8 (7%)</p>
+                <p>Total complaints: <span id="analytics-total">0</span></p>
+                <p>Resolved: <span id="analytics-resolved">0</span> (<span id="analytics-resolved-pct">0</span>%)</p>
+                <p>In progress: <span id="analytics-in-progress">0</span> (<span id="analytics-in-progress-pct">0</span>%)</p>
+                <p>Escalated: <span id="analytics-escalated">0</span> (<span id="analytics-escalated-pct">0</span>%)</p>
             </div>
             <div class="card">
                 <h3>Resolution Metrics</h3>
-                <p>Average resolution time: 5.2 days</p>
-                <p>Fastest resolution: 4 hours</p>
-                <p>Currently pending: 28</p>
-                <p>SLA compliance rate: 94%</p>
+                <p>Average resolution time: <span id="analytics-avg-time">0</span> days</p>
+                <p>Fastest resolution: <span id="analytics-fastest">0</span> hours</p>
+                <p>Currently pending: <span id="analytics-pending">0</span></p>
+                <p>SLA compliance rate: <span id="analytics-sla">0</span>%</p>
             </div>
         </section>
     </main>
@@ -306,8 +194,272 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2024 Barangay Complaint Management System. All rights reserved.</p>
+            <p>&copy; 2025 Barangay Complaint Management System. All rights reserved.</p>
         </div>
     </footer>
+
+    <script>
+        // Load admin dashboard data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+            loadRecentActivity();
+            loadComplaints();
+            loadUsers();
+            loadAnalytics();
+        });
+
+        // Load dashboard statistics
+        function loadStats() {
+            fetch('/admin/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('total-residents').textContent = data.total_residents || 0;
+                    document.getElementById('total-officials').textContent = data.total_officials || 0;
+                    document.getElementById('pending-requests').textContent = data.pending_requests || 0;
+                    document.getElementById('upcoming-events').textContent = data.upcoming_events || 0;
+                    
+                    // Update complaints badge
+                    const badge = document.getElementById('complaints-badge');
+                    if (badge) {
+                        badge.textContent = data.pending_requests || 0;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading stats:', error);
+                });
+        }
+
+        // Load recent activity
+        function loadRecentActivity() {
+            fetch('/admin/recent-activity')
+                .then(response => response.json())
+                .then(activities => {
+                    const activityList = document.getElementById('activity-list');
+                    
+                    if (activities.length === 0) {
+                        activityList.innerHTML = '<p class="loading">No recent activity</p>';
+                        return;
+                    }
+
+                    activityList.innerHTML = '';
+                    activities.forEach(activity => {
+                        const activityItem = document.createElement('div');
+                        activityItem.className = 'activity-item';
+                        
+                        const iconClass = activity.type === 'new_user' ? 'new-user' : 
+                                        activity.icon === 'check-circle' ? 'document' : 'document';
+                        
+                        activityItem.innerHTML = `
+                            <div class="activity-icon ${iconClass}">
+                                <i class="fas fa-${activity.icon}"></i>
+                            </div>
+                            <div class="activity-details">
+                                <p>${activity.message}</p>
+                                <span class="timestamp">${activity.timestamp}</span>
+                            </div>
+                        `;
+                        activityList.appendChild(activityItem);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading activity:', error);
+                    document.getElementById('activity-list').innerHTML = '<p class="loading">Error loading activities</p>';
+                });
+        }
+
+        // Load complaints
+        function loadComplaints() {
+            fetch('/admin/complaints')
+                .then(response => response.json())
+                .then(complaints => {
+                    const tbody = document.getElementById('complaints-table-body');
+                    
+                    if (complaints.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="loading">No complaints found</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = '';
+                    complaints.forEach(complaint => {
+                        const row = document.createElement('tr');
+                        
+                        // Format date
+                        let formattedDate = 'N/A';
+                        if (complaint.date) {
+                            try {
+                                const date = new Date(complaint.date);
+                                formattedDate = date.toLocaleDateString('en-US', { 
+                                    year: 'numeric', 
+                                    month: 'short', 
+                                    day: 'numeric' 
+                                });
+                            } catch (e) {
+                                formattedDate = complaint.date;
+                            }
+                        }
+
+                        // Determine status class
+                        const statusClass = complaint.status.toLowerCase().replace(/\s+/g, '-');
+                        
+                        row.innerHTML = `
+                            <td>${complaint.id}</td>
+                            <td>${complaint.title}</td>
+                            <td>${complaint.resident}</td>
+                            <td>${formattedDate}</td>
+                            <td><span class="status ${statusClass}">${complaint.status}</span></td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn edit" onclick="viewComplaint('${complaint.id}')"><i class="fas fa-eye"></i></button>
+                                    <button class="btn delete" onclick="deleteComplaint('${complaint.id}')"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading complaints:', error);
+                    document.getElementById('complaints-table-body').innerHTML = 
+                        '<tr><td colspan="6" class="loading">Error loading complaints</td></tr>';
+                });
+        }
+
+        // Load users
+        function loadUsers() {
+            fetch('/admin/users')
+                .then(response => response.json())
+                .then(users => {
+                    const tbody = document.getElementById('users-table-body');
+                    
+                    if (users.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="loading">No users found</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = '';
+                    users.forEach(user => {
+                        const row = document.createElement('tr');
+                        
+                        // Determine role display
+                        let roleClass = user.role;
+                        let roleText = user.role;
+                        if (user.is_admin) {
+                            roleClass = 'admin';
+                            roleText = 'Admin';
+                        }
+                        
+                        row.innerHTML = `
+                            <td>${user.name}</td>
+                            <td>${user.email}</td>
+                            <td><span class="role ${roleClass}">${roleText}</span></td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn edit" onclick="editUser('${user.uid}')"><i class="fas fa-edit"></i></button>
+                                    <button class="btn delete" onclick="deleteUser('${user.uid}', '${user.name}')"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading users:', error);
+                    document.getElementById('users-table-body').innerHTML = 
+                        '<tr><td colspan="4" class="loading">Error loading users</td></tr>';
+                });
+        }
+
+        // Load analytics
+        function loadAnalytics() {
+            fetch('/admin/analytics')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('analytics-total').textContent = data.total || 0;
+                    document.getElementById('analytics-resolved').textContent = data.resolved || 0;
+                    document.getElementById('analytics-resolved-pct').textContent = data.resolved_percentage || 0;
+                    document.getElementById('analytics-in-progress').textContent = data.in_progress || 0;
+                    document.getElementById('analytics-in-progress-pct').textContent = data.in_progress_percentage || 0;
+                    document.getElementById('analytics-escalated').textContent = data.escalated || 0;
+                    document.getElementById('analytics-escalated-pct').textContent = data.escalated_percentage || 0;
+                    document.getElementById('analytics-avg-time').textContent = data.avg_resolution_time || 0;
+                    document.getElementById('analytics-fastest').textContent = data.fastest_resolution || 0;
+                    document.getElementById('analytics-pending').textContent = data.pending || 0;
+                    document.getElementById('analytics-sla').textContent = data.sla_compliance || 0;
+                })
+                .catch(error => {
+                    console.error('Error loading analytics:', error);
+                });
+        }
+
+        // View complaint details
+        function viewComplaint(complaintId) {
+            // Navigate to complaint details or open modal
+            alert('View complaint: ' + complaintId + '\n\nThis feature will show complaint details.');
+        }
+
+        // Delete complaint
+        function deleteComplaint(complaintId) {
+            if (!confirm('Are you sure you want to delete this complaint?')) {
+                return;
+            }
+
+            fetch('/admin/complaint/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: complaintId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Complaint deleted successfully');
+                    loadComplaints();
+                    loadStats();
+                    loadAnalytics();
+                } else {
+                    alert('Error deleting complaint: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting complaint');
+            });
+        }
+
+        // Edit user
+        function editUser(userId) {
+            alert('Edit user: ' + userId + '\n\nThis feature will allow editing user details.');
+        }
+
+        // Delete user
+        function deleteUser(userId, userName) {
+            if (!confirm('Are you sure you want to delete user: ' + userName + '?')) {
+                return;
+            }
+
+            fetch('/admin/user/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ uid: userId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User deleted successfully');
+                    loadUsers();
+                    loadStats();
+                } else {
+                    alert('Error deleting user: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting user');
+            });
+        }
+    </script>
 </body>
 </html>

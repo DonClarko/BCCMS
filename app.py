@@ -2,6 +2,7 @@ from flask import Flask, render_template, session, redirect, url_for, flash
 from auth_firebase import auth_bp, create_default_admin, login_required, role_required
 from complaints_firebase import complaint_bp
 from feedback_firebase import feedback_bp
+from admin_firebase import admin_bp
 from firebase_config import initialize_firebase
 
 # Initialize Firebase
@@ -17,6 +18,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # Session timeout in seconds (3
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(complaint_bp)
 app.register_blueprint(feedback_bp)
+app.register_blueprint(admin_bp)
 
 # Create default admin account
 create_default_admin()
