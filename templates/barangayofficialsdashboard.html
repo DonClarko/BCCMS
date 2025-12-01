@@ -122,107 +122,6 @@
                 </div>
             </div>
         </section>
-
-        <!-- Feedback Section -->
-        <section id="feedback" class="feedback-section">
-            <div class="section-header">
-                <h2><i class="fas fa-comment-alt"></i> Resident Feedback</h2>
-                <div class="feedback-filter">
-                    <select id="feedback-filter">
-                        <option value="all">All Feedback</option>
-                        <option value="positive">Positive</option>
-                        <option value="neutral">Neutral</option>
-                        <option value="negative">Negative</option>
-                        <option value="recent">Most Recent</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="feedback-list">
-                <div class="feedback-card positive">
-                    <div class="feedback-header">
-                        <div class="resident-avatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="resident-info">
-                            <h3>Maria Santos</h3>
-                            <div class="rating-stars">
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                            </div>
-                        </div>
-                        <span class="feedback-date">Today</span>
-                    </div>
-                    <div class="feedback-content">
-                        <p>Thank you for resolving my garbage collection issue so quickly! The barangay staff were very professional and helpful throughout the process.</p>
-                    </div>
-                    <div class="feedback-meta">
-                        <span class="complaint-reference">BCMS-2025-044</span>
-                        <button class="btn-reply"><i class="fas fa-reply"></i> Reply</button>
-                    </div>
-                </div>
-                
-                <div class="feedback-card neutral">
-                    <div class="feedback-header">
-                        <div class="resident-avatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="resident-info">
-                            <h3>Pedro Reyes</h3>
-                            <div class="rating-stars">
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="far fa-star"></i>
-                            </div>
-                        </div>
-                        <span class="feedback-date">2 days ago</span>
-                    </div>
-                    <div class="feedback-content">
-                        <p>The road repair was completed, but it took longer than expected. Communication could be improved about expected completion times.</p>
-                    </div>
-                    <div class="feedback-meta">
-                        <span class="complaint-reference">BCMS-2025-043</span>
-                        <button class="btn-reply"><i class="fas fa-reply"></i> Reply</button>
-                    </div>
-                </div>
-                
-                <div class="feedback-card negative">
-                    <div class="feedback-header">
-                        <div class="resident-avatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="resident-info">
-                            <h3>Juan Dela Cruz</h3>
-                            <div class="rating-stars">
-                                <i class="fas fa-star"></i>
-                                <i class="fas fa-star"></i>
-                                <i class="far fa-star"></i>
-                                <i class="far fa-star"></i>
-                                <i class="far fa-star"></i>
-                            </div>
-                        </div>
-                        <span class="feedback-date">1 week ago</span>
-                    </div>
-                    <div class="feedback-content">
-                        <p>My noise complaint was not handled well. The issue persists and I didn't receive updates on the status. Very disappointed with the service.</p>
-                    </div>
-                    <div class="feedback-meta">
-                        <span class="complaint-reference">BCMS-2025-042</span>
-                        <button class="btn-reply"><i class="fas fa-reply"></i> Reply</button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="section-footer">
-                <a href="#all-feedback" class="btn-secondary"><i class="fas fa-list"></i> View All Feedback</a>
-                <a href="#feedback-report" class="btn-primary"><i class="fas fa-chart-bar"></i> Generate Feedback Report</a>
-            </div>
-        </section>
     </main>
 
     <!-- Footer -->
@@ -283,6 +182,27 @@
             <h2><i class="fas fa-bell"></i> Notifications</h2>
             <div class="notifications-list" style="max-height: 500px; overflow-y: auto;">
                 <!-- Notifications will be loaded here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedback-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close-btn">&times;</span>
+            <h2><i class="fas fa-comment-alt"></i> Resident Feedback</h2>
+            <div class="feedback-filter" style="margin-bottom: 15px;">
+                <select id="feedback-filter" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="all">All Feedback</option>
+                    <option value="positive">Positive</option>
+                    <option value="neutral">Neutral</option>
+                    <option value="negative">Negative</option>
+                    <option value="recent">Most Recent</option>
+                </select>
+            </div>
+            <div class="feedback-list" id="feedback-list" style="max-height: 500px; overflow-y: auto;">
+                <!-- Feedback will be loaded here dynamically -->
+                <p style="text-align: center; padding: 20px; color: #666;">Loading feedback...</p>
             </div>
         </div>
     </div>
@@ -551,6 +471,29 @@ document.addEventListener("DOMContentLoaded", function() {
     
     // Initialize counts on page load
     updateNotificationCounts();
+    
+    // Handle navigation links for modals (Messages, Notifications, Feedback)
+    document.querySelectorAll('a[href="#messages"]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            openModal('messages-modal');
+        });
+    });
+    
+    document.querySelectorAll('a[href="#notifications"]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            openModal('notifications-modal');
+        });
+    });
+    
+    document.querySelectorAll('a[href="#feedback"]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            openModal('feedback-modal');
+            loadFeedback(); // Load feedback when modal opens
+        });
+    });
     
     // Modal control
     const statusUpdateModal = document.getElementById("status-update-modal");
@@ -1383,6 +1326,135 @@ function formatDateForTable(dateString) {
         return `${diffDays} days ago`;
     }
 }
+
+// Load feedback from Firebase
+async function loadFeedback(filterType = 'all') {
+    try {
+        const url = filterType === 'all' ? '/feedback/recent' : `/feedback/filter?type=${filterType}`;
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        });
+
+        if (response.redirected) {
+            window.location.href = response.url;
+            return;
+        }
+
+        const feedbackList = await response.json();
+        const feedbackContainer = document.getElementById('feedback-list');
+        
+        if (!feedbackContainer) return;
+
+        feedbackContainer.innerHTML = '';
+
+        if (feedbackList.length === 0) {
+            feedbackContainer.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">No feedback available</p>';
+        } else {
+            feedbackList.forEach(feedback => {
+                const feedbackCard = createFeedbackCard(feedback);
+                feedbackContainer.appendChild(feedbackCard);
+            });
+        }
+
+    } catch (error) {
+        console.error('Error loading feedback:', error);
+        const feedbackContainer = document.getElementById('feedback-list');
+        if (feedbackContainer) {
+            feedbackContainer.innerHTML = '<p style="text-align: center; padding: 20px; color: #e74c3c;">Error loading feedback</p>';
+        }
+    }
+}
+
+// Create feedback card element
+function createFeedbackCard(feedback) {
+    const card = document.createElement('div');
+    
+    // Determine card class based on rating
+    let cardClass = 'neutral';
+    if (feedback.rating >= 4) {
+        cardClass = 'positive';
+    } else if (feedback.rating <= 2) {
+        cardClass = 'negative';
+    }
+    
+    card.className = `feedback-card ${cardClass}`;
+    
+    // Generate star rating HTML
+    const starsHTML = generateStars(feedback.rating);
+    
+    // Format date
+    const feedbackDate = formatDateForTable(feedback.submitted_date);
+    
+    // Get feedback type display name
+    const feedbackTypeDisplay = getFeedbackTypeDisplay(feedback.feedback_type);
+    
+    card.innerHTML = `
+        <div class="feedback-header">
+            <div class="resident-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="resident-info">
+                <h3>${feedback.user_name || 'Anonymous'}</h3>
+                <div class="rating-stars">
+                    ${starsHTML}
+                </div>
+            </div>
+            <span class="feedback-date">${feedbackDate}</span>
+        </div>
+        <div class="feedback-content">
+            <p><strong>Type:</strong> ${feedbackTypeDisplay}</p>
+            <p>${feedback.message}</p>
+        </div>
+        ${feedback.complaint_id ? `<div class="feedback-meta">
+            <span class="complaint-reference">${feedback.complaint_id}</span>
+        </div>` : ''}
+    `;
+    
+    return card;
+}
+
+// Generate star rating HTML
+function generateStars(rating) {
+    let starsHTML = '';
+    for (let i = 1; i <= 5; i++) {
+        if (i <= rating) {
+            starsHTML += '<i class="fas fa-star"></i>';
+        } else {
+            starsHTML += '<i class="far fa-star"></i>';
+        }
+    }
+    return starsHTML;
+}
+
+// Get feedback type display name
+function getFeedbackTypeDisplay(type) {
+    const types = {
+        'complaint-process': 'Complaint Process',
+        'response-time': 'Response Time',
+        'staff-courtesy': 'Staff Courtesy',
+        'resolution-quality': 'Resolution Quality',
+        'system-usability': 'System Usability',
+        'other': 'Other'
+    };
+    return types[type] || type;
+}
+
+// Feedback filter change handler
+document.getElementById('feedback-filter')?.addEventListener('change', function(e) {
+    const filterType = e.target.value;
+    loadFeedback(filterType);
+});
+
+// Initialize - Load complaints on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadComplaintsForOfficials();
+});
+
 </script>
 <script src="{{ url_for('static', filename='js/messaging.js') }}"></script>
 </body>

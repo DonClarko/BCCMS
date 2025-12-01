@@ -535,11 +535,39 @@ document.addEventListener("DOMContentLoaded", function() {
     
     const feedbackForm = document.getElementById("feedback-form");
     if (feedbackForm) {
-        feedbackForm.addEventListener("submit", function(e) {
+        feedbackForm.addEventListener("submit", async function(e) {
             e.preventDefault();
-            // Here you would typically send the feedback data to the server
-            alert("Thank you for your valuable feedback!");
-            closeModal(feedbackModal);
+            
+            try {
+                const formData = new FormData(this);
+                
+                const response = await fetch('/feedback/submit', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return;
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Thank you for your valuable feedback!');
+                    feedbackForm.reset();
+                    closeModal(feedbackModal);
+                } else {
+                    alert(`Error: ${result.message || 'Failed to submit feedback'}`);
+                }
+            } catch (error) {
+                console.error('Error submitting feedback:', error);
+                alert('There was an error submitting your feedback. Please try again.');
+            }
         });
     }
     
@@ -897,46 +925,6 @@ function getStatusClass(status) {
     };
     return statusMap[status] || '';
 }
-
-// Handle feedback submission
-document.getElementById('feedback-form')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(this);
-    const complaintId = document.querySelector('.complaint-details-card .complaint-id')?.textContent;
-    
-    if (complaintId) {
-        formData.append('complaint_id', complaintId);
-    }
-    
-    try {
-        const response = await fetch('/feedback/submit', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin'
-        });
-        
-        if (response.redirected) {
-            window.location.href = response.url;
-            return;
-        }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            alert('Thank you for your feedback!');
-            closeModal(document.getElementById('feedback-modal'));
-        } else {
-            alert(`Error: ${result.message || 'Failed to submit feedback'}`);
-        }
-    } catch (error) {
-        console.error('Error submitting feedback:', error);
-        alert('There was an error submitting your feedback. Please try again.');
-    }
-});
 
 // Handle message submission
 document.addEventListener('click', function(e) {
