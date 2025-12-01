@@ -4,6 +4,7 @@ import json
 import os
 from datetime import datetime
 from auth import login_required, role_required
+from auth import load_users, save_users
 import uuid
 
 complaint_bp = Blueprint('complaint', __name__)
@@ -617,3 +618,184 @@ def get_resident_stats():
         1
     )
     return jsonify(stats)
+
+
+# Get list of all officials for messaging
+@complaint_bp.route('/officials/list')
+@login_required
+def get_officials_list():
+    try:
+        users = load_users()
+        officials = []
+        for email, user in users.items():
+            # Only include users with official role
+            if user.get('role') == 'official':
+                officials.append({
+                    'email': email,
+                    'name': user.get('name', email),
+                    'role': 'official'
+                })
+        return jsonify(officials)
+    except Exception as e:
+        print('Error loading officials list:', e)
+        return jsonify([]), 500
+
+
+# Get list of all residents for messaging (officials only)
+@complaint_bp.route('/residents/list')
+@login_required
+@role_required('official')
+def get_residents_list():
+    try:
+        users = load_users()
+        residents = []
+        for email, user in users.items():
+            # Only include users with resident role (not officials, not admins)
+            if user.get('role') == 'resident':
+                residents.append({
+                    'email': email,
+                    'name': user.get('name', email),
+                    'role': 'resident'
+                })
+        return jsonify(residents)
+    except Exception as e:
+        print('Error loading residents list:', e)
+        return jsonify([]), 500
+
+
+# Messages & Notifications API
+@complaint_bp.route('/messages')
+@login_required
+def get_messages():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify([]), 401
+    users = load_users()
+    user = users.get(user_email, {})
+    messages = user.get('messages', [])
+    # return newest first
+    sorted_msgs = sorted(messages, key=lambda m: m.get('timestamp', ''), reverse=True)
+    return jsonify(sorted_msgs)
+
+
+@complaint_bp.route('/message/send', methods=['POST'])
+@login_required
+def send_message():
+    try:
+        # Accept JSON or form data
+        data = request.get_json() or request.form.to_dict()
+        to_email = data.get('to') or data.get('to_email')
+        subject = data.get('subject', '')
+        content = data.get('content', '')
+        complaint_id = data.get('complaint_id')
+
+        if not to_email or not content:
+            return jsonify({'success': False, 'error': 'Missing recipient or content'}), 400
+
+        users = load_users()
+        sender_email = session.get('user_email')
+        sender = users.get(sender_email, {})
+        recipient = users.get(to_email)
+        
+        if not recipient:
+            return jsonify({'success': False, 'error': 'Recipient not found'}), 404
+
+        msg = {
+            'id': str(uuid.uuid4())[:8],
+            'from_email': sender_email,
+            'from_name': session.get('user_name'),
+            'to_email': to_email,
+            'to_name': recipient.get('name', to_email),
+            'subject': subject,
+            'content': content,
+            'complaint_id': complaint_id,
+            'timestamp': datetime.now().isoformat(),
+            'read': False
+        }
+
+        # Save message in recipient's inbox
+        recipient.setdefault('messages', [])
+        recipient['messages'].append(msg)
+        
+        # Also save message in sender's sent folder (create a copy marked as sent)
+        sent_msg = msg.copy()
+        sent_msg['isSent'] = True
+        sender.setdefault('messages', [])
+        sender['messages'].append(sent_msg)
+        
+        save_users(users)
+
+        # Optionally add a notification for the recipient
+        recipient.setdefault('notifications', [])
+        recipient['notifications'].append({
+            'id': str(uuid.uuid4())[:8],
+            'timestamp': datetime.now().isoformat(),
+            'title': f"New message: {subject[:40]}",
+            'message': content[:140],
+            'read': False
+        })
+        save_users(users)
+
+        return jsonify({'success': True})
+    except Exception as e:
+        print('Error sending message:', e)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@complaint_bp.route('/notifications')
+@login_required
+def get_notifications():
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify([]), 401
+
+    # Get user notifications from users.json
+    users = load_users()
+    user = users.get(user_email, {})
+    user_notes = user.get('notifications', [])
+
+    # Also collect complaint-level resident_notifications for this user
+    complaint_notes = []
+    all_complaints = load_complaints()
+    for c in all_complaints:
+        if c.get('user_email') == user_email and c.get('resident_notifications'):
+            complaint_notes.extend(c.get('resident_notifications'))
+
+    # Merge and sort by timestamp
+    merged = list(user_notes) + list(complaint_notes)
+    merged_sorted = sorted(merged, key=lambda n: n.get('timestamp', ''), reverse=True)
+    return jsonify(merged_sorted)
+
+
+@complaint_bp.route('/notifications/mark_read', methods=['POST'])
+@login_required
+def mark_notification_read():
+    data = request.get_json() or {}
+    note_id = data.get('id')
+    if not note_id:
+        return jsonify({'success': False, 'error': 'Missing id'}), 400
+
+    users = load_users()
+    user_email = session.get('user_email')
+    user = users.get(user_email)
+    updated = False
+    if user and user.get('notifications'):
+        for n in user['notifications']:
+            if n.get('id') == note_id:
+                n['read'] = True
+                updated = True
+                break
+    if updated:
+        save_users(users)
+        return jsonify({'success': True})
+
+    # As fallback try complaint resident_notifications
+    complaints = load_complaints()
+    for c in complaints:
+        for n in c.get('resident_notifications', []):
+            if n.get('id') == note_id:
+                n['read'] = True
+                save_complaints(complaints)
+                return jsonify({'success': True})
+
+    return jsonify({'success': False, 'error': 'Notification not found'}), 404

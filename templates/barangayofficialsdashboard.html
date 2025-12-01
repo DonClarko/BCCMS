@@ -160,115 +160,6 @@
             </div>
         </section>
 
-        <!-- Messages Section -->
-        <section id="messages" class="messages-section">
-            <div class="section-header">
-                <h2><i class="fas fa-envelope"></i> Messages</h2>
-                <span class="notification-count">3</span>
-            </div>
-            <div class="messages-list">
-                <div class="message-card unread">
-                    <div class="message-sender">
-                        <div class="sender-avatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="sender-info">
-                            <h3>Juan Dela Cruz</h3>
-                            <p class="message-preview">Regarding my complaint about noise disturbance...</p>
-                        </div>
-                    </div>
-                    <div class="message-meta">
-                        <span class="message-time">2 hours ago</span>
-                        <button class="btn-mark-read"><i class="far fa-check-circle"></i></button>
-                    </div>
-                </div>
-                
-                <div class="message-card">
-                    <div class="message-sender">
-                        <div class="sender-avatar">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="sender-info">
-                            <h3>Maria Santos</h3>
-                            <p class="message-preview">Thank you for resolving my garbage complaint...</p>
-                        </div>
-                    </div>
-                    <div class="message-meta">
-                        <span class="message-time">1 day ago</span>
-                        <button class="btn-mark-read"><i class="far fa-check-circle"></i></button>
-                    </div>
-                </div>
-                
-                <div class="message-card">
-                    <div class="message-sender">
-                        <div class="sender-avatar">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="sender-info">
-                            <h3>Homeowners Association</h3>
-                            <p class="message-preview">Meeting reminder for tomorrow at 3pm...</p>
-                        </div>
-                    </div>
-                    <div class="message-meta">
-                        <span class="message-time">3 days ago</span>
-                        <button class="btn-mark-read"><i class="far fa-check-circle"></i></button>
-                    </div>
-                </div>
-            </div>
-            <div class="section-footer">
-                <a href="#all-messages" class="btn-secondary"><i class="fas fa-inbox"></i> View All Messages</a>
-                <a href="#new-message" class="btn-primary"><i class="fas fa-paper-plane"></i> New Message</a>
-            </div>
-        </section>
-
-        <!-- Notifications Section -->
-        <section id="notifications" class="notifications-section">
-            <div class="section-header">
-                <h2><i class="fas fa-bell"></i> Notifications</h2>
-                <span class="notification-count">5</span>
-            </div>
-            <div class="notifications-list">
-                <div class="notification-card unread">
-                    <div class="notification-icon">
-                        <i class="fas fa-exclamation-circle"></i>
-                    </div>
-                    <div class="notification-content">
-                        <h3>New Complaint Submitted</h3>
-                        <p>Juan Dela Cruz has submitted a new complaint about noise disturbance.</p>
-                        <span class="notification-time">30 minutes ago</span>
-                    </div>
-                    <button class="btn-mark-read"><i class="far fa-check-circle"></i></button>
-                </div>
-                
-                <div class="notification-card unread">
-                    <div class="notification-icon">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="notification-content">
-                        <h3>Complaint Resolved</h3>
-                        <p>Your assigned complaint BCMS-2025-044 has been resolved.</p>
-                        <span class="notification-time">2 hours ago</span>
-                    </div>
-                    <button class="btn-mark-read"><i class="far fa-check-circle"></i></button>
-                </div>
-                
-                <div class="notification-card">
-                    <div class="notification-icon">
-                        <i class="fas fa-calendar-alt"></i>
-                    </div>
-                    <div class="notification-content">
-                        <h3>Upcoming Meeting</h3>
-                        <p>Barangay council meeting scheduled for tomorrow at 10:00 AM.</p>
-                        <span class="notification-time">1 day ago</span>
-                    </div>
-                    <button class="btn-mark-read"><i class="far fa-check-circle"></i></button>
-                </div>
-            </div>
-            <div class="section-footer">
-                <a href="#all-notifications" class="btn-secondary"><i class="fas fa-list"></i> View All Notifications</a>
-            </div>
-        </section>
-
         <!-- Feedback Section -->
         <section id="feedback" class="feedback-section">
             <div class="section-header">
@@ -407,6 +298,75 @@
     </footer>
 
     <!-- Status Update Modal -->
+    
+    <!-- Messages Modal -->
+    <div id="messages-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-btn">&times;</span>
+            <h2><i class="fas fa-envelope"></i> Messages</h2>
+            <button id="compose-message-btn-official-nav" class="btn-primary" style="margin-bottom: 15px; padding: 6px 12px; font-size: 14px;">
+                <i class="fas fa-plus"></i> Send Message
+            </button>
+            <div class="messages-list" style="max-height: 500px; overflow-y: auto;">
+                <!-- Messages will be loaded here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Modal -->
+    <div id="notifications-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-btn">&times;</span>
+            <h2><i class="fas fa-bell"></i> Notifications</h2>
+            <div class="notifications-list" style="max-height: 500px; overflow-y: auto;">
+                <!-- Notifications will be loaded here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Compose Message Modal for Officials -->
+    <div id="compose-message-modal-official" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2><i class="fas fa-pen-fancy"></i> Send Message to Resident</h2>
+            
+            <form id="compose-message-form-official" class="compose-message-form">
+                <div class="form-group">
+                    <label for="message-recipient-official">Select Resident</label>
+                    <select id="message-recipient-official" name="recipient" required>
+                        <option value="">-- Choose a resident --</option>
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="message-complaint-official">Related Complaint (Optional)</label>
+                    <select id="message-complaint-official" name="complaint_id">
+                        <option value="">-- Select complaint --</option>
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="message-subject-official">Subject</label>
+                    <input type="text" id="message-subject-official" name="subject" placeholder="Message subject..." required>
+                </div>
+
+                <div class="form-group">
+                    <label for="message-content-official">Message</label>
+                    <textarea id="message-content-official" name="content" placeholder="Type your message here..." required></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-paper-plane"></i> Send Message
+                    </button>
+                    <button type="button" class="btn-secondary cancel-btn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="status-update-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn">&times;</span>
@@ -643,15 +603,17 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     
     function openModal(modal) {
-        if (modal) {
-            modal.style.display = "block";
+        const elem = typeof modal === 'string' ? document.getElementById(modal) : modal;
+        if (elem) {
+            elem.style.display = "block";
             document.body.style.overflow = "hidden";
         }
     }
     
     function closeModal(modal) {
-        if (modal) {
-            modal.style.display = "none";
+        const elem = typeof modal === 'string' ? document.getElementById(modal) : modal;
+        if (elem) {
+            elem.style.display = "none";
             document.body.style.overflow = "auto";
         }
     }
@@ -1333,5 +1295,6 @@ function resolveEscalatedComplaint(complaintId) {
     }
 }
 </script>
+<script src="{{ url_for('static', filename='js/messaging.js') }}"></script>
 </body>
 </html>

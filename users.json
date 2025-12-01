@@ -1,0 +1,19 @@
+{
+    "admin01-barangay@gmail.com": {
+        "full_name": "Barangay Admin",
+        "email": "admin01-barangay@gmail.com",
+        "phone": "09123456789",
+        "password": "scrypt:32768:8:1$BYSANv7cMvHlYPWU$abca2f95dae9dfcfa022a36a93a0e6695f574b2661f9149100f7defcb61ee0fe2e8d5bd70587a0cb3da3122d52aa5ba1083ca93ead3ea883e06097b37e12e9a0",
+        "role": "official",
+        "created_at": "2025-04-25T16:19:50.139861",
+        "is_admin": true
+    },
+    "clarencezamora321@gmail.com": {
+        "full_name": "Clarence",
+        "email": "clarencezamora321@gmail.com",
+        "phone": "09385315514",
+        "password": "scrypt:32768:8:1$l7WXx88eyLlvoHBk$67d9e527a5e20667b339f6d5f1aa631643ce8d3785d30285772ee54f77e0e0876ae800ad7bf95a4a6d8b422d3270825548c52b9d32823d18f029c9fe474a4d45",
+        "role": "resident",
+        "created_at": "2025-05-06T09:34:00.419301"
+    }
+}
