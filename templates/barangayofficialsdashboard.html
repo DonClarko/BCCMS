@@ -88,7 +88,7 @@
                     <ul>
                         <li><a href="#all-complaints" class="filter-link" data-status="all"><i class="fas fa-list"></i> All Complaints <span class="badge" data-status="all">0</span></a></li>
                         <li><a href="#new-complaints" class="filter-link" data-status="New"><i class="fas fa-plus-circle"></i> New Complaints <span class="badge" data-status="New">0</span></a></li>
-                        <li><a href="#pending" class="filter-link" data-status="Pending"><i class="fas fa-clock"></i> Pending Review <span class="badge" data-status="Pending">0</span></a></li>
+                        <li><a href="#pending" class="filter-link" data-status="Pending Review"><i class="fas fa-clock"></i> Pending Review <span class="badge" data-status="Pending Review">0</span></a></li>
                         <li><a href="#in-progress" class="filter-link" data-status="In Progress"><i class="fas fa-spinner"></i> In Progress <span class="badge" data-status="In Progress">0</span></a></li>
                         <li><a href="#escalated" class="filter-link" data-status="Escalated"><i class="fas fa-exclamation-triangle"></i> Escalated <span class="badge" data-status="Escalated">0</span></a></li>
                         <li><a href="#resolved" class="filter-link" data-status="Resolved"><i class="fas fa-check-circle"></i> Resolved <span class="badge" data-status="Resolved">0</span></a></li>
@@ -976,6 +976,15 @@ function loadComplaints(status, showAll = false) {
             
             // Highlight the active filter in sidebar
             highlightActiveSidebarItem(status);
+            
+            // Update badge counts with ALL complaints (not just filtered)
+            // Need to fetch all complaints to update counts accurately
+            fetch('/complaint/recent')
+                .then(res => res.json())
+                .then(allComplaints => {
+                    updateBadgeCounts(allComplaints);
+                })
+                .catch(err => console.error('Error updating badge counts:', err));
         })
         .catch(error => {
             console.error(`Error loading ${status} complaints:`, error);
@@ -1057,24 +1066,8 @@ function createActionButtons(complaint) {
     let actionButtons = `
         <a href="#view" class="btn-action btn-view"><i class="fas fa-eye"></i></a>
         <a href="#update" class="btn-action btn-update"><i class="fas fa-edit"></i></a>
+        <a href="#message" class="btn-action btn-message"><i class="fas fa-envelope"></i></a>
     `;
-    
-    // Add message button for most statuses
-    if (complaint.status !== 'New' || complaint.status === 'Pending Review' || 
-        complaint.status === 'In Progress' || complaint.status === 'Escalated' ||
-        complaint.status === 'Resolved') {
-        actionButtons += `
-            <a href="#message" class="btn-action btn-message"><i class="fas fa-envelope"></i></a>
-        `;
-    }
-    
-    // Add escalate button for pending and in-progress complaints
-    if ((complaint.status === 'Pending Review' || complaint.status === 'In Progress') && 
-        !complaint.escalated) {
-        actionButtons += `
-            <a href="#escalate" class="btn-action btn-escalate"><i class="fas fa-level-up-alt"></i></a>
-        `;
-    }
     
     return actionButtons;
 }
@@ -1348,7 +1341,7 @@ function updateBadgeCounts(complaints) {
     const statusGroups = {
         'all': complaints.length,
         'New': complaints.filter(c => c.status === 'New').length,
-        'Pending': complaints.filter(c => c.status === 'Pending').length,
+        'Pending Review': complaints.filter(c => c.status === 'Pending Review').length,
         'In Progress': complaints.filter(c => c.status === 'In Progress').length,
         'Escalated': complaints.filter(c => c.status === 'Escalated').length,
         'Resolved': complaints.filter(c => c.status === 'Resolved').length
