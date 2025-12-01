@@ -1,6 +1,10 @@
 from flask import Flask, render_template, session, redirect, url_for, flash
-from auth import auth_bp, create_default_admin, login_required, role_required
-from complaints import complaint_bp
+from auth_firebase import auth_bp, create_default_admin, login_required, role_required
+from complaints_firebase import complaint_bp
+from firebase_config import initialize_firebase
+
+# Initialize Firebase
+initialize_firebase()
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # Change this to a random secure key in production

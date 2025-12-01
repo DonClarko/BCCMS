@@ -8,12 +8,92 @@
         "created_at": "2025-04-25T16:19:50.139861",
         "is_admin": true
     },
+    "superclarky21@gmail.com": {
+        "full_name": "Super Clarky",
+        "email": "superclarky21@gmail.com",
+        "phone": "09460357257",
+        "password": "scrypt:32768:8:1$xyIcj89PV8Ua2wXP$be938b531b9ebfe0fa6178f19b57ed2bfe44aaa26021c8961d94ff0e7d361ec529e4cf718c0ec740d7a10150292c93ea69ba045510f3bf4548b8d606acd57244",
+        "role": "official",
+        "created_at": "2025-12-01T20:03:40.301173",
+        "messages": [
+            {
+                "id": "7c2ff72f",
+                "from_email": "clarencezamora321@gmail.com",
+                "from_name": "Clarence Zamora",
+                "to_email": "superclarky21@gmail.com",
+                "to_name": "superclarky21@gmail.com",
+                "subject": "Update",
+                "content": "Boss ano balita",
+                "complaint_id": "BCMS-2025-0685330f",
+                "timestamp": "2025-12-01T20:07:17.226779",
+                "read": false
+            },
+            {
+                "id": "238cc02f",
+                "from_email": "superclarky21@gmail.com",
+                "from_name": "Super Clarky",
+                "to_email": "clarencezamora321@gmail.com",
+                "to_name": "clarencezamora321@gmail.com",
+                "subject": "Update",
+                "content": "Please wait lang boss",
+                "complaint_id": null,
+                "timestamp": "2025-12-01T20:07:50.715211",
+                "read": false,
+                "isSent": true
+            }
+        ],
+        "notifications": [
+            {
+                "id": "346a3feb",
+                "timestamp": "2025-12-01T20:07:17.227785",
+                "title": "New message: Update",
+                "message": "Boss ano balita",
+                "read": true
+            }
+        ]
+    },
     "clarencezamora321@gmail.com": {
-        "full_name": "Clarence",
+        "full_name": "Clarence Zamora",
         "email": "clarencezamora321@gmail.com",
         "phone": "09385315514",
-        "password": "scrypt:32768:8:1$l7WXx88eyLlvoHBk$67d9e527a5e20667b339f6d5f1aa631643ce8d3785d30285772ee54f77e0e0876ae800ad7bf95a4a6d8b422d3270825548c52b9d32823d18f029c9fe474a4d45",
+        "password": "scrypt:32768:8:1$Ln7ZKW4aGQx0BVEo$a33f58b40595b2916404345ed2718f20fcc6e771bd0d7fe35c406fb102c6c05f85f7c878c88296739c19ce25da2608aa6c03c3d0d7885271f492edede9239031",
         "role": "resident",
-        "created_at": "2025-05-06T09:34:00.419301"
+        "created_at": "2025-12-01T20:04:38.488162",
+        "messages": [
+            {
+                "id": "7c2ff72f",
+                "from_email": "clarencezamora321@gmail.com",
+                "from_name": "Clarence Zamora",
+                "to_email": "superclarky21@gmail.com",
+                "to_name": "superclarky21@gmail.com",
+                "subject": "Update",
+                "content": "Boss ano balita",
+                "complaint_id": "BCMS-2025-0685330f",
+                "timestamp": "2025-12-01T20:07:17.226779",
+                "read": false,
+                "isSent": true
+            },
+            {
+                "id": "238cc02f",
+                "from_email": "superclarky21@gmail.com",
+                "from_name": "Super Clarky",
+                "to_email": "clarencezamora321@gmail.com",
+                "to_name": "clarencezamora321@gmail.com",
+                "subject": "Update",
+                "content": "Please wait lang boss",
+                "complaint_id": null,
+                "timestamp": "2025-12-01T20:07:50.715211",
+                "read": false
+            }
+        ],
+        "notifications": [
+            {
+                "id": "9ccb662d",
+                "timestamp": "2025-12-01T20:07:50.715715",
+                "title": "New message: Update",
+                "message": "Please wait lang boss",
+                "read": false
+            }
+        ]
     }
 }

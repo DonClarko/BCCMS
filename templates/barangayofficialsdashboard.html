@@ -6,6 +6,11 @@
     <title>Barangay Officials Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/barangayofficialsdashboard.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-database.js"></script>
+    <script src="{{ url_for('static', filename='js/firebaseConfig.js') }}"></script>
 </head>
 <body>
     <!-- Header Navigation -->
@@ -81,12 +86,12 @@
                 <div class="sidebar">
                     <h3>Quick Actions</h3>
                     <ul>
-                        <li><a href="#all-complaints"><i class="fas fa-list"></i> All Complaints <span class="badge">142</span></a></li>
-                        <li><a href="#new-complaints"><i class="fas fa-plus-circle"></i> New Complaints <span class="badge">5</span></a></li>
-                        <li><a href="#pending"><i class="fas fa-clock"></i> Pending Review <span class="badge">12</span></a></li>
-                        <li><a href="#in-progress"><i class="fas fa-spinner"></i> In Progress <span class="badge">8</span></a></li>
-                        <li><a href="#escalated"><i class="fas fa-exclamation-triangle"></i> Escalated <span class="badge">3</span></a></li>
-                        <li><a href="#resolved"><i class="fas fa-check-circle"></i> Resolved <span class="badge">89</span></a></li>
+                        <li><a href="#all-complaints" class="filter-link" data-status="all"><i class="fas fa-list"></i> All Complaints <span class="badge" data-status="all">0</span></a></li>
+                        <li><a href="#new-complaints" class="filter-link" data-status="New"><i class="fas fa-plus-circle"></i> New Complaints <span class="badge" data-status="New">0</span></a></li>
+                        <li><a href="#pending" class="filter-link" data-status="Pending"><i class="fas fa-clock"></i> Pending Review <span class="badge" data-status="Pending">0</span></a></li>
+                        <li><a href="#in-progress" class="filter-link" data-status="In Progress"><i class="fas fa-spinner"></i> In Progress <span class="badge" data-status="In Progress">0</span></a></li>
+                        <li><a href="#escalated" class="filter-link" data-status="Escalated"><i class="fas fa-exclamation-triangle"></i> Escalated <span class="badge" data-status="Escalated">0</span></a></li>
+                        <li><a href="#resolved" class="filter-link" data-status="Resolved"><i class="fas fa-check-circle"></i> Resolved <span class="badge" data-status="Resolved">0</span></a></li>
                     </ul>
                 </div>
 
@@ -108,51 +113,9 @@
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="complaints-table-body">
                             <tr>
-                                <td>BCMS-2025-045</td>
-                                <td>Noise</td>
-                                <td>Today</td>
-                                <td>Juan Dela Cruz</td>
-                                <td><span class="status new">New</span></td>
-                                <td><span class="urgency high">High</span></td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <a href="#view" class="btn-action btn-view"><i class="fas fa-eye"></i></a>
-                                        <a href="#update" class="btn-action btn-update"><i class="fas fa-edit"></i></a>
-                                        <a href="#message" class="btn-action btn-message"><i class="fas fa-envelope"></i></a>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>BCMS-2025-044</td>
-                                <td>Garbage</td>
-                                <td>Yesterday</td>
-                                <td>Maria Santos</td>
-                                <td><span class="status pending">Pending</span></td>
-                                <td><span class="urgency medium">Medium</span></td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <a href="#view" class="btn-action btn-view"><i class="fas fa-eye"></i></a>
-                                        <a href="#update" class="btn-action btn-update"><i class="fas fa-edit"></i></a>
-                                        <a href="#message" class="btn-action btn-message"><i class="fas fa-envelope"></i></a>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>BCMS-2025-043</td>
-                                <td>Road</td>
-                                <td>2 days ago</td>
-                                <td>Pedro Reyes</td>
-                                <td><span class="status in-progress">In Progress</span></td>
-                                <td><span class="urgency high">High</span></td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <a href="#view" class="btn-action btn-view"><i class="fas fa-eye"></i></a>
-                                        <a href="#update" class="btn-action btn-update"><i class="fas fa-edit"></i></a>
-                                        <a href="#message" class="btn-action btn-message"><i class="fas fa-envelope"></i></a>
-                                    </div>
-                                </td>
+                                <td colspan="7" style="text-align: center; padding: 20px;">Loading complaints...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -755,54 +718,45 @@ document.addEventListener("DOMContentLoaded", function() {
     // Initialize dashboard
     if (document.querySelector('.stat-card')) {
         loadStats();
-        
-        // Get current active view or default to 'all'
-        const currentView = getCurrentViewFromSidebar() || 'all';
-        loadComplaints(currentView, false); // Initially show limited view
+        loadComplaintsForOfficials();
     }
     
-    // Modify sidebar click handler to reset to limited view on filter change
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
-        sidebar.addEventListener('click', function(e) {
+    // Sidebar filter click handler for Quick Actions
+    const quickActionsList = document.querySelector('.sidebar ul');
+    if (quickActionsList) {
+        quickActionsList.addEventListener('click', function(e) {
             e.preventDefault();
-            const link = e.target.closest('a[href^="#"]');
+            const link = e.target.closest('.filter-link');
             if (!link) return;
             
-            const href = link.getAttribute('href');
-            let status = 'all';
+            // Get the status from data-status attribute
+            const filterStatus = link.getAttribute('data-status');
             
-            // Set the active class on the clicked link and remove from others
-            sidebar.querySelectorAll('a').forEach(a => a.classList.remove('active'));
+            // Remove active class from all links and add to clicked link
+            quickActionsList.querySelectorAll('.filter-link').forEach(a => a.classList.remove('active'));
             link.classList.add('active');
             
-            // Determine which complaints to load based on the href
-            switch(href) {
-                case '#all-complaints':
-                    status = 'all';
-                    break;
-                case '#new-complaints':
-                    status = 'new';
-                    break;
-                case '#pending':
-                    status = 'pending-review';
-                    break;
-                case '#in-progress':
-                    status = 'in-progress';
-                    break;
-                case '#escalated':
-                    status = 'escalated';
-                    break;
-                case '#resolved':
-                    status = 'resolved';
-                    break;
-                default:
-                    status = 'all';
-                    break;
+            // Map filter status values to endpoint status values
+            const statusMap = {
+                'all': 'all',
+                'New': 'new',
+                'Pending': 'pending',
+                'In Progress': 'in-progress',
+                'Escalated': 'escalated',
+                'Resolved': 'resolved'
+            };
+            
+            const endpointStatus = statusMap[filterStatus] || filterStatus;
+            
+            // Update section header
+            const sectionHeader = document.querySelector('.section-header h2');
+            if (sectionHeader) {
+                const statusLabel = filterStatus === 'all' ? 'Recent Complaints' : `${filterStatus} Complaints`;
+                sectionHeader.innerHTML = `<i class="fas fa-list"></i> ${statusLabel}`;
             }
             
-            // Reset to limited view when changing filters
-            loadComplaints(status, false);
+            // Load filtered complaints
+            loadComplaints(endpointStatus, false);
         });
     }
 
@@ -1292,6 +1246,116 @@ function resolveEscalatedComplaint(complaintId) {
             console.error('Error resolving complaint:', error);
             showNotification('error', `Failed to resolve complaint: ${error.message}`);
         });
+    }
+}
+
+// Load complaints for officials dashboard
+async function loadComplaintsForOfficials(filterStatus = 'all') {
+    try {
+        const response = await fetch('/complaint/recent', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        });
+
+        if (response.redirected) {
+            window.location.href = response.url;
+            return;
+        }
+
+        const complaints = await response.json();
+        const tableBody = document.getElementById('complaints-table-body');
+        
+        if (!tableBody) return;
+
+        tableBody.innerHTML = '';
+
+        // Filter complaints based on status
+        let filteredComplaints = complaints;
+        if (filterStatus !== 'all') {
+            filteredComplaints = complaints.filter(c => c.status === filterStatus);
+        }
+
+        if (filteredComplaints.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = '<td colspan="7" style="text-align: center; padding: 20px;">No complaints found</td>';
+            tableBody.appendChild(emptyRow);
+        } else {
+            // Display filtered complaints
+            filteredComplaints.forEach(complaint => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-complaint-id', complaint.id);
+
+                const dateDisplay = formatDateForTable(complaint.submitted_date);
+                const categoryDisplay = complaint.category || 'N/A';
+
+                row.innerHTML = `
+                    <td>${complaint.id}</td>
+                    <td>${categoryDisplay}</td>
+                    <td>${dateDisplay}</td>
+                    <td>${complaint.user_name || 'Resident'}</td>
+                    <td><span class="status ${complaint.status.toLowerCase().replace(/\s/g, '-')}">${complaint.status}</span></td>
+                    <td><span class="urgency ${complaint.urgency.toLowerCase()}">${complaint.urgency}</span></td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="#view" class="btn-action btn-view" onclick="showComplaintDetails('${complaint.id}')"><i class="fas fa-eye"></i></a>
+                            <a href="#update" class="btn-action btn-update" onclick="showStatusUpdateModal('${complaint.id}')"><i class="fas fa-edit"></i></a>
+                            <a href="#message" class="btn-action btn-message" onclick="showMessageModal('${complaint.id}', '${complaint.user_email}')"><i class="fas fa-envelope"></i></a>
+                        </div>
+                    </td>
+                `;
+
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Update all badge counts
+        updateBadgeCounts(complaints);
+
+    } catch (error) {
+        console.error('Error loading complaints:', error);
+        const tableBody = document.getElementById('complaints-table-body');
+        if (tableBody) {
+            tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">Error loading complaints</td></tr>';
+        }
+    }
+}
+
+// Update badge counts for all Quick Action filters
+function updateBadgeCounts(complaints) {
+    const statusGroups = {
+        'all': complaints.length,
+        'New': complaints.filter(c => c.status === 'New').length,
+        'Pending': complaints.filter(c => c.status === 'Pending').length,
+        'In Progress': complaints.filter(c => c.status === 'In Progress').length,
+        'Escalated': complaints.filter(c => c.status === 'Escalated').length,
+        'Resolved': complaints.filter(c => c.status === 'Resolved').length
+    };
+
+    // Update each badge
+    Object.keys(statusGroups).forEach(status => {
+        const badge = document.querySelector(`.badge[data-status="${status}"]`);
+        if (badge) {
+            badge.textContent = statusGroups[status];
+        }
+    });
+}
+
+// Format date for table display
+function formatDateForTable(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+        return 'Today';
+    } else if (diffDays === 1) {
+        return 'Yesterday';
+    } else {
+        return `${diffDays} days ago`;
     }
 }
 </script>

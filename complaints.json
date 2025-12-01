@@ -1,0 +1,38 @@
+[
+    {
+        "id": "BCMS-2025-0685330f",
+        "title": "Maingay na Kapitbahay",
+        "category": "noise",
+        "description": "sobrangingay erp",
+        "location": "sa tapat namin",
+        "incident_date": "2025-12-01",
+        "submitted_date": "2025-12-01T20:05:15.750024",
+        "user_email": "clarencezamora321@gmail.com",
+        "user_name": "Clarence Zamora",
+        "status": "Pending Review",
+        "urgency": "Low",
+        "estimated_resolution": "7 days",
+        "escalated": false,
+        "assigned_to": null,
+        "notifications_sent": [],
+        "updates": [
+            {
+                "timestamp": "2025-12-01T20:06:19.580884",
+                "from_status": "New",
+                "to_status": "Pending Review",
+                "action_note": "Pending na po please wait",
+                "by_official": "superclarky21@gmail.com",
+                "official_name": "Super Clarky"
+            }
+        ],
+        "official_notifications": [
+            {
+                "id": "c4600fd3",
+                "timestamp": "2025-12-01T20:05:15.760243",
+                "title": "New complaint submitted",
+                "message": "A new Low urgency complaint has been submitted",
+                "read": false
+            }
+        ]
+    }
+]
