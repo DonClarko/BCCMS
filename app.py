@@ -48,5 +48,9 @@ def admin_dashboard():
     return render_template('admindashboard.html',
                           user_name=session.get('user_name', 'Admin'))
 
+@app.route('/test-api')
+def test_api():
+    return render_template('test_api.html')
+
 if __name__ == '__main__':
     app.run(debug=True)

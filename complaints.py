@@ -3,8 +3,8 @@ import time
 import json
 import os
 from datetime import datetime
-from auth import login_required, role_required
-from auth import load_users, save_users
+from auth_firebase import login_required, role_required
+from firebase_admin import db
 import uuid
 
 complaint_bp = Blueprint('complaint', __name__)
@@ -625,16 +625,18 @@ def get_resident_stats():
 @login_required
 def get_officials_list():
     try:
-        users = load_users()
+        users_ref = db.reference('users')
+        users = users_ref.get() or {}
         officials = []
-        for email, user in users.items():
+        for uid, user in users.items():
             # Only include users with official role
             if user.get('role') == 'official':
                 officials.append({
-                    'email': email,
-                    'name': user.get('name', email),
+                    'email': user.get('email', ''),
+                    'name': user.get('full_name', user.get('email', '')),
                     'role': 'official'
                 })
+        print(f'Found {len(officials)} officials for messaging')
         return jsonify(officials)
     except Exception as e:
         print('Error loading officials list:', e)
@@ -647,16 +649,18 @@ def get_officials_list():
 @role_required('official')
 def get_residents_list():
     try:
-        users = load_users()
+        users_ref = db.reference('users')
+        users = users_ref.get() or {}
         residents = []
-        for email, user in users.items():
+        for uid, user in users.items():
             # Only include users with resident role (not officials, not admins)
             if user.get('role') == 'resident':
                 residents.append({
-                    'email': email,
-                    'name': user.get('name', email),
+                    'email': user.get('email', ''),
+                    'name': user.get('full_name', user.get('email', '')),
                     'role': 'resident'
                 })
+        print(f'Found {len(residents)} residents for messaging')
         return jsonify(residents)
     except Exception as e:
         print('Error loading residents list:', e)
@@ -667,11 +671,11 @@ def get_residents_list():
 @complaint_bp.route('/messages')
 @login_required
 def get_messages():
-    user_email = session.get('user_email')
-    if not user_email:
+    user_uid = session.get('user_uid')
+    if not user_uid:
         return jsonify([]), 401
-    users = load_users()
-    user = users.get(user_email, {})
+    user_ref = db.reference(f'users/{user_uid}')
+    user = user_ref.get() or {}
     messages = user.get('messages', [])
     # return newest first
     sorted_msgs = sorted(messages, key=lambda m: m.get('timestamp', ''), reverse=True)
@@ -692,20 +696,31 @@ def send_message():
         if not to_email or not content:
             return jsonify({'success': False, 'error': 'Missing recipient or content'}), 400
 
-        users = load_users()
-        sender_email = session.get('user_email')
-        sender = users.get(sender_email, {})
-        recipient = users.get(to_email)
+        # Find recipient by email
+        users_ref = db.reference('users')
+        users = users_ref.get() or {}
         
-        if not recipient:
+        recipient_uid = None
+        recipient_data = None
+        sender_uid = session.get('user_uid')
+        sender_data = None
+        
+        for uid, user in users.items():
+            if user.get('email') == to_email:
+                recipient_uid = uid
+                recipient_data = user
+            if uid == sender_uid:
+                sender_data = user
+        
+        if not recipient_uid or not recipient_data:
             return jsonify({'success': False, 'error': 'Recipient not found'}), 404
 
         msg = {
             'id': str(uuid.uuid4())[:8],
-            'from_email': sender_email,
+            'from_email': session.get('user_email'),
             'from_name': session.get('user_name'),
             'to_email': to_email,
-            'to_name': recipient.get('name', to_email),
+            'to_name': recipient_data.get('full_name', to_email),
             'subject': subject,
             'content': content,
             'complaint_id': complaint_id,
@@ -714,27 +729,29 @@ def send_message():
         }
 
         # Save message in recipient's inbox
-        recipient.setdefault('messages', [])
-        recipient['messages'].append(msg)
+        recipient_ref = db.reference(f'users/{recipient_uid}')
+        recipient_messages = recipient_data.get('messages', [])
+        recipient_messages.append(msg)
+        recipient_ref.child('messages').set(recipient_messages)
         
         # Also save message in sender's sent folder (create a copy marked as sent)
         sent_msg = msg.copy()
         sent_msg['isSent'] = True
-        sender.setdefault('messages', [])
-        sender['messages'].append(sent_msg)
-        
-        save_users(users)
+        sender_ref = db.reference(f'users/{sender_uid}')
+        sender_messages = sender_data.get('messages', []) if sender_data else []
+        sender_messages.append(sent_msg)
+        sender_ref.child('messages').set(sender_messages)
 
         # Optionally add a notification for the recipient
-        recipient.setdefault('notifications', [])
-        recipient['notifications'].append({
+        recipient_notifications = recipient_data.get('notifications', [])
+        recipient_notifications.append({
             'id': str(uuid.uuid4())[:8],
             'timestamp': datetime.now().isoformat(),
             'title': f"New message: {subject[:40]}",
             'message': content[:140],
             'read': False
         })
-        save_users(users)
+        recipient_ref.child('notifications').set(recipient_notifications)
 
         return jsonify({'success': True})
     except Exception as e:
@@ -745,13 +762,14 @@ def send_message():
 @complaint_bp.route('/notifications')
 @login_required
 def get_notifications():
+    user_uid = session.get('user_uid')
     user_email = session.get('user_email')
-    if not user_email:
+    if not user_uid:
         return jsonify([]), 401
 
-    # Get user notifications from users.json
-    users = load_users()
-    user = users.get(user_email, {})
+    # Get user notifications from Firebase
+    user_ref = db.reference(f'users/{user_uid}')
+    user = user_ref.get() or {}
     user_notes = user.get('notifications', [])
 
     # Also collect complaint-level resident_notifications for this user
@@ -775,18 +793,19 @@ def mark_notification_read():
     if not note_id:
         return jsonify({'success': False, 'error': 'Missing id'}), 400
 
-    users = load_users()
-    user_email = session.get('user_email')
-    user = users.get(user_email)
+    user_uid = session.get('user_uid')
+    user_ref = db.reference(f'users/{user_uid}')
+    user = user_ref.get() or {}
     updated = False
     if user and user.get('notifications'):
-        for n in user['notifications']:
+        notifications = user['notifications']
+        for n in notifications:
             if n.get('id') == note_id:
                 n['read'] = True
                 updated = True
                 break
     if updated:
-        save_users(users)
+        user_ref.child('notifications').set(user['notifications'])
         return jsonify({'success': True})
 
     # As fallback try complaint resident_notifications

@@ -5,6 +5,7 @@ const IS_OFFICIAL_DASHBOARD = !!document.getElementById('status-update-modal');
 
 // Load list of residents for official's compose message modal
 function loadResidentsForMessaging() {
+    console.log('Loading residents for messaging...');
     fetch('/residents/list', {
         method: 'GET',
         headers: {
@@ -12,10 +13,17 @@ function loadResidentsForMessaging() {
         },
         credentials: 'same-origin'
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Residents response status:', response.status);
+        return response.json();
+    })
     .then(residents => {
+        console.log('Residents received:', residents);
         const select = document.getElementById('message-recipient-official');
-        if (!select) return;
+        if (!select) {
+            console.error('message-recipient-official select not found!');
+            return;
+        }
 
         // Clear existing options except the first one
         while (select.options.length > 1) {
@@ -29,12 +37,14 @@ function loadResidentsForMessaging() {
             option.textContent = `${resident.name} (${resident.email})`;
             select.appendChild(option);
         });
+        console.log(`Added ${residents.length} residents to dropdown`);
     })
     .catch(error => console.error('Error loading residents:', error));
 }
 
 // Load list of officials for resident's compose message modal
 function loadOfficialsForMessaging() {
+    console.log('Loading officials for messaging...');
     fetch('/officials/list', {
         method: 'GET',
         headers: {
@@ -42,10 +52,17 @@ function loadOfficialsForMessaging() {
         },
         credentials: 'same-origin'
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Officials response status:', response.status);
+        return response.json();
+    })
     .then(officials => {
+        console.log('Officials received:', officials);
         const select = document.getElementById('message-recipient');
-        if (!select) return;
+        if (!select) {
+            console.error('message-recipient select not found!');
+            return;
+        }
 
         // Clear existing options except the first one
         while (select.options.length > 1) {
@@ -59,6 +76,7 @@ function loadOfficialsForMessaging() {
             option.textContent = `${official.name} (${official.email})`;
             select.appendChild(option);
         });
+        console.log(`Added ${officials.length} officials to dropdown`);
     })
     .catch(error => console.error('Error loading officials:', error));
 }
@@ -672,6 +690,8 @@ function setupResidentComposeForm() {
                 composeModal.style.display = 'block';
                 document.body.style.overflow = 'hidden';
             }
+            loadOfficialsForMessaging();
+            loadComplaintsForMessaging(false);
         });
     }
 
@@ -780,6 +800,7 @@ function setupOfficialComposeForm() {
                 document.body.style.overflow = 'hidden';
             }
             loadResidentsForMessaging();
+            loadComplaintsForMessaging(true);
         });
     }
 
@@ -953,6 +974,7 @@ function setupMessageNotificationNavLinks() {
                 document.body.style.overflow = 'hidden';
             }
             loadResidentsForMessaging();
+            loadComplaintsForMessaging(true);
         });
     }
     
@@ -969,6 +991,7 @@ function setupMessageNotificationNavLinks() {
                 document.body.style.overflow = 'hidden';
             }
             loadResidentsForMessaging();
+            loadComplaintsForMessaging(true);
         });
     }
 }

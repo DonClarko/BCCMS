@@ -329,3 +329,185 @@ def update_complaint():
     except Exception as e:
         print(f"Error updating complaint: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# Get list of all officials for messaging
+@complaint_bp.route('/officials/list')
+@login_required
+def get_officials_list():
+    try:
+        users_ref = db.reference('users')
+        users = users_ref.get() or {}
+        officials = []
+        for uid, user in users.items():
+            # Only include users with official role
+            if user.get('role') == 'official':
+                officials.append({
+                    'email': user.get('email', ''),
+                    'name': user.get('full_name', user.get('email', '')),
+                    'role': 'official'
+                })
+        print(f'Found {len(officials)} officials for messaging')
+        return jsonify(officials)
+    except Exception as e:
+        print('Error loading officials list:', e)
+        return jsonify([]), 500
+
+
+# Get list of all residents for messaging (officials only)
+@complaint_bp.route('/residents/list')
+@login_required
+@role_required('official')
+def get_residents_list():
+    try:
+        users_ref = db.reference('users')
+        users = users_ref.get() or {}
+        residents = []
+        for uid, user in users.items():
+            # Only include users with resident role (not officials, not admins)
+            if user.get('role') == 'resident':
+                residents.append({
+                    'email': user.get('email', ''),
+                    'name': user.get('full_name', user.get('email', '')),
+                    'role': 'resident'
+                })
+        print(f'Found {len(residents)} residents for messaging')
+        return jsonify(residents)
+    except Exception as e:
+        print('Error loading residents list:', e)
+        return jsonify([]), 500
+
+
+# Messages & Notifications API
+@complaint_bp.route('/messages')
+@login_required
+def get_messages():
+    user_uid = session.get('user_uid')
+    if not user_uid:
+        return jsonify([]), 401
+    user_ref = db.reference(f'users/{user_uid}')
+    user = user_ref.get() or {}
+    messages = user.get('messages', [])
+    # return newest first
+    sorted_msgs = sorted(messages, key=lambda m: m.get('timestamp', ''), reverse=True)
+    return jsonify(sorted_msgs)
+
+
+@complaint_bp.route('/message/send', methods=['POST'])
+@login_required
+def send_message():
+    try:
+        # Accept JSON or form data
+        data = request.get_json() or request.form.to_dict()
+        to_email = data.get('to') or data.get('to_email')
+        subject = data.get('subject', '')
+        content = data.get('content', '')
+        complaint_id = data.get('complaint_id')
+
+        if not to_email or not content:
+            return jsonify({'success': False, 'error': 'Missing recipient or content'}), 400
+
+        # Find recipient by email
+        users_ref = db.reference('users')
+        users = users_ref.get() or {}
+        
+        recipient_uid = None
+        recipient_data = None
+        sender_uid = session.get('user_uid')
+        sender_data = None
+        
+        for uid, user in users.items():
+            if user.get('email') == to_email:
+                recipient_uid = uid
+                recipient_data = user
+            if uid == sender_uid:
+                sender_data = user
+        
+        if not recipient_uid or not recipient_data:
+            return jsonify({'success': False, 'error': 'Recipient not found'}), 404
+
+        msg = {
+            'id': str(uuid.uuid4())[:8],
+            'from_email': session.get('user_email'),
+            'from_name': session.get('user_name'),
+            'to_email': to_email,
+            'to_name': recipient_data.get('full_name', to_email),
+            'subject': subject,
+            'content': content,
+            'complaint_id': complaint_id,
+            'timestamp': datetime.now().isoformat(),
+            'read': False
+        }
+
+        # Save message in recipient's inbox
+        recipient_ref = db.reference(f'users/{recipient_uid}')
+        recipient_messages = recipient_data.get('messages', [])
+        recipient_messages.append(msg)
+        recipient_ref.child('messages').set(recipient_messages)
+        
+        # Also save message in sender's sent folder (create a copy marked as sent)
+        sent_msg = msg.copy()
+        sent_msg['isSent'] = True
+        sender_ref = db.reference(f'users/{sender_uid}')
+        sender_messages = sender_data.get('messages', []) if sender_data else []
+        sender_messages.append(sent_msg)
+        sender_ref.child('messages').set(sender_messages)
+
+        # Optionally add a notification for the recipient
+        recipient_notifications = recipient_data.get('notifications', [])
+        recipient_notifications.append({
+            'id': str(uuid.uuid4())[:8],
+            'timestamp': datetime.now().isoformat(),
+            'title': f"New message: {subject[:40]}",
+            'message': content[:140],
+            'read': False
+        })
+        recipient_ref.child('notifications').set(recipient_notifications)
+
+        return jsonify({'success': True})
+    except Exception as e:
+        print('Error sending message:', e)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@complaint_bp.route('/notifications')
+@login_required
+def get_notifications():
+    user_uid = session.get('user_uid')
+    if not user_uid:
+        return jsonify([]), 401
+
+    # Get user notifications from Firebase
+    user_ref = db.reference(f'users/{user_uid}')
+    user = user_ref.get() or {}
+    user_notes = user.get('notifications', [])
+
+    # Sort by timestamp
+    merged_sorted = sorted(user_notes, key=lambda n: n.get('timestamp', ''), reverse=True)
+    return jsonify(merged_sorted)
+
+
+@complaint_bp.route('/notifications/mark_read', methods=['POST'])
+@login_required
+def mark_notification_read():
+    data = request.get_json() or {}
+    note_id = data.get('id')
+    if not note_id:
+        return jsonify({'success': False, 'error': 'Missing id'}), 400
+
+    user_uid = session.get('user_uid')
+    user_ref = db.reference(f'users/{user_uid}')
+    user = user_ref.get() or {}
+    updated = False
+    if user and user.get('notifications'):
+        notifications = user['notifications']
+        for n in notifications:
+            if n.get('id') == note_id:
+                n['read'] = True
+                updated = True
+                break
+    if updated:
+        user_ref.child('notifications').set(user['notifications'])
+        return jsonify({'success': True})
+    
+    return jsonify({'success': False, 'error': 'Notification not found'}), 404

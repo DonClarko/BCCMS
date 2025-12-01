@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Messaging API</title>
+</head>
+<body>
+    <h1>Test Messaging Endpoints</h1>
+    <button onclick="testOfficials()">Test Load Officials</button>
+    <button onclick="testResidents()">Test Load Residents</button>
+    
+    <div id="output" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;">
+        <h3>Output:</h3>
+        <pre id="result"></pre>
+    </div>
+
+    <script>
+        async function testOfficials() {
+            document.getElementById('result').textContent = 'Loading officials...';
+            try {
+                const response = await fetch('/officials/list', {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                const data = await response.json();
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function testResidents() {
+            document.getElementById('result').textContent = 'Loading residents...';
+            try {
+                const response = await fetch('/residents/list', {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                });
+                
+                const data = await response.json();
+                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
