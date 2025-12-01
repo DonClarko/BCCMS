@@ -648,7 +648,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const notifyResident = document.getElementById("notify-resident").checked;
             
             // Make API request to update complaint status
-            fetch('/officials/update', {
+            fetch('/complaint/update', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -656,7 +656,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 body: JSON.stringify({
                     complaint_id: complaintId,
                     status: status,
-                    action_note: notes,
+                    notes: notes,
                     notify_resident: notifyResident
                 })
             })
@@ -669,7 +669,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 updateDashboard();
                 
                 // Add notification
-                showNotification('success', `Complaint ${complaintId} status updated to ${status}`);
+                showNotification('success', `Complaint ${complaintId} status updated to ${status}${notifyResident ? ' - Resident notified' : ''}`);
                 
                 // Close the modal
                 closeModal(statusUpdateModal);
@@ -1154,19 +1154,39 @@ function showAssignModal(complaintId) {
 
 // Show modal to message a resident
 function showMessageModal(complaintId, residentEmail) {
-    const messageModal = document.getElementById("message-modal");
-    if (!messageModal) return;
+    const composeModal = document.getElementById("compose-message-modal-official");
+    if (!composeModal) return;
     
-    // Set recipient in hidden field if it exists
-    const recipientField = document.getElementById("recipient-email");
-    if (recipientField) recipientField.value = residentEmail;
+    // Load residents list first
+    if (typeof loadResidentsForMessaging === 'function') {
+        loadResidentsForMessaging();
+    }
     
-    // Set complaint ID if field exists
-    const complaintIdField = document.getElementById("message-complaint-id");
-    if (complaintIdField) complaintIdField.value = complaintId;
+    // Pre-select the resident email after a short delay to allow residents to load
+    setTimeout(() => {
+        const recipientSelect = document.getElementById("message-recipient-official");
+        if (recipientSelect && residentEmail) {
+            // Find and select the option with matching email
+            const options = Array.from(recipientSelect.options);
+            const matchingOption = options.find(opt => opt.value === residentEmail);
+            if (matchingOption) {
+                recipientSelect.value = residentEmail;
+            }
+        }
+        
+        // Pre-select the complaint if available
+        const complaintSelect = document.getElementById("message-complaint-official");
+        if (complaintSelect && complaintId) {
+            const options = Array.from(complaintSelect.options);
+            const matchingOption = options.find(opt => opt.textContent.includes(complaintId));
+            if (matchingOption) {
+                complaintSelect.value = matchingOption.value;
+            }
+        }
+    }, 500);
     
-    // Show the modal
-    messageModal.style.display = "block";
+    // Show the compose modal
+    composeModal.style.display = "block";
     document.body.style.overflow = "hidden";
 }
 

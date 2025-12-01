@@ -933,106 +933,41 @@ document.addEventListener('click', function(e) {
                            document.querySelector('.complaint-details-card .complaint-id')?.textContent;
         
         if (complaintId) {
-            showMessageModal(complaintId);
+            // Open compose message modal and pre-fill complaint ID
+            const composeModal = document.getElementById('compose-message-modal');
+            const complaintSelect = document.getElementById('message-complaint');
+            
+            if (composeModal && complaintSelect) {
+                // Load officials list
+                if (typeof loadOfficialsForMessaging === 'function') {
+                    loadOfficialsForMessaging();
+                }
+                
+                // Pre-select the complaint
+                setTimeout(() => {
+                    const options = Array.from(complaintSelect.options);
+                    const matchingOption = options.find(opt => opt.textContent.includes(complaintId));
+                    if (matchingOption) {
+                        complaintSelect.value = matchingOption.value;
+                    }
+                }, 500); // Wait for complaints to load
+                
+                // Open the modal
+                composeModal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+            }
         }
     }
 });
 
-// Show message modal
+// Show message modal - OLD VERSION - No longer used
+// Kept for reference, can be deleted
+/*
 async function showMessageModal(complaintId) {
-    try {
-        const response = await fetch(`/complaint/details?id=${complaintId}`, {
-            method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin'
-        });
-        
-        if (response.redirected) {
-            window.location.href = response.url;
-            return;
-        }
-        
-        const complaint = await response.json();
-        
-        const detailsContent = document.getElementById('complaint-details-content');
-        detailsContent.innerHTML = `
-            <h2>Send Message Regarding ${complaint.id}</h2>
-            <div class="message-form-container">
-                <form id="message-form">
-                    <div class="form-group">
-                        <label for="message-subject">Subject</label>
-                        <input type="text" id="message-subject" name="subject" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="message-content">Message</label>
-                        <textarea id="message-content" name="content" required></textarea>
-                    </div>
-                    <div class="form-actions">
-                        <button type="submit" class="btn-primary"><i class="fas fa-paper-plane"></i> Send Message</button>
-                        <button type="button" class="btn-secondary close-details">Cancel</button>
-                    </div>
-                </form>
-            </div>
-        `;
-        
-        const modal = document.getElementById('complaint-details-modal');
-        modal.style.display = 'block';
-        document.body.style.overflow = 'hidden';
-        
-        // Add event listener for close button
-        detailsContent.querySelector('.close-details')?.addEventListener('click', () => {
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        });
-        
-        // Handle message form submission
-        detailsContent.querySelector('#message-form')?.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            formData.append('complaint_id', complaintId);
-            
-            try {
-                const response = await fetch('/message/send', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    credentials: 'same-origin'
-                });
-                
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return;
-                }
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('Message sent successfully!');
-                    modal.style.display = 'none';
-                    document.body.style.overflow = 'auto';
-                } else {
-                    alert(`Error: ${result.message || 'Failed to send message'}`);
-                }
-            } catch (error) {
-                console.error('Error sending message:', error);
-                alert('There was an error sending your message. Please try again.');
-            }
-        });
-        
-    } catch (error) {
-        console.error('Error loading message form:', error);
-        alert('Failed to load message form. Please try again.');
-        
-        if (error.status === 401) {
-            window.location.href = '/auth/login';
-        }
-    }
+    // This function is no longer used
+    // Messages now open directly in compose modal
 }
+*/
 
 // Initialize real-time updates
 function initializeRealTimeUpdates() {

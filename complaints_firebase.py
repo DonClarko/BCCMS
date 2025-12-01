@@ -310,6 +310,7 @@ def update_complaint():
         
         complaint_id = request.json.get('complaint_id')
         status = request.json.get('status')
+        notes = request.json.get('notes', '')
         
         complaints_ref = db.reference(f'complaints/{complaint_id}')
         complaint = complaints_ref.get()
@@ -317,12 +318,45 @@ def update_complaint():
         if not complaint:
             return jsonify({'success': False, 'message': 'Complaint not found'}), 404
         
+        # Get old status for comparison
+        old_status = complaint.get('status', 'New')
+        
         # Update complaint
         complaint['status'] = status
         complaint['updated_at'] = datetime.now().isoformat()
         complaint['updated_by'] = session.get('user_uid')
+        if notes:
+            complaint['status_notes'] = notes
         
         complaints_ref.set(complaint)
+        
+        # Send notification to the resident who filed the complaint
+        resident_uid = complaint.get('user_uid')
+        if resident_uid:
+            users_ref = db.reference('users')
+            users = users_ref.get() or {}
+            
+            # Find resident by UID
+            resident_data = users.get(resident_uid)
+            
+            if resident_data:
+                # Create notification
+                notification = {
+                    'id': str(uuid.uuid4())[:8],
+                    'timestamp': datetime.now().isoformat(),
+                    'title': f'Complaint Status Updated: {complaint_id}',
+                    'message': f'Your complaint status has been updated from "{old_status}" to "{status}".{" Note: " + notes if notes else ""}',
+                    'complaint_id': complaint_id,
+                    'read': False
+                }
+                
+                # Add notification to resident's notifications
+                resident_ref = db.reference(f'users/{resident_uid}')
+                resident_notifications = resident_data.get('notifications', [])
+                resident_notifications.append(notification)
+                resident_ref.child('notifications').set(resident_notifications)
+                
+                print(f'Notification sent to resident {resident_uid} for complaint {complaint_id}')
         
         return jsonify({'success': True, 'message': 'Complaint updated successfully'})
         
