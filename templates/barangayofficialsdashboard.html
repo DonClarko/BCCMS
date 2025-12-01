@@ -420,6 +420,18 @@ async function showComplaintDetails(complaintId) {
                     <h3>Description</h3>
                     <p>${complaint.description}</p>
                 </div>
+                ${complaint.attachments?.length ? `
+                <div class="detail-row">
+                    <h3>Uploaded Evidence</h3>
+                    <div class="complaint-images">
+                        ${complaint.attachments.map(attachment => `
+                            <div class="image-item">
+                                <img src="data:${attachment.mime_type};base64,${attachment.data}" alt="${attachment.filename}" style="max-width: 300px; max-height: 300px; margin: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <p style="font-size: 0.85em; color: #666; text-align: center;">${attachment.filename}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>` : ''}
                 ${complaint.updates?.length ? `
                 <div class="detail-row">
                     <h3>Update History</h3>

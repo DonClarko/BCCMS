@@ -122,6 +122,32 @@ def submit_complaint():
                 'email': request.form.get('email')
             }
         
+        # Handle file attachments
+        images = []
+        files = request.files.getlist('attachment')
+        if files:
+            import base64
+            for file in files:
+                if file and file.filename:
+                    # Read file and convert to base64
+                    file_data = file.read()
+                    file_base64 = base64.b64encode(file_data).decode('utf-8')
+                    
+                    # Get file extension
+                    file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+                    
+                    # Determine MIME type
+                    mime_type = file.content_type or 'image/jpeg'
+                    
+                    images.append({
+                        'filename': file.filename,
+                        'data': file_base64,
+                        'mime_type': mime_type
+                    })
+            
+            if images:
+                new_complaint['attachments'] = images
+        
         # Save to Firebase
         complaints_ref = db.reference(f'complaints/{complaint_id}')
         complaints_ref.set(new_complaint)

@@ -753,6 +753,19 @@ async function showComplaintDetails(complaintId) {
                     <p>${complaint.description}</p>
                 </div>
                 
+                ${complaint.attachments?.length ? `
+                <div class="detail-row">
+                    <h4>Uploaded Evidence</h4>
+                    <div class="complaint-images" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                        ${complaint.attachments.map(attachment => `
+                            <div class="image-item" style="text-align: center;">
+                                <img src="data:${attachment.mime_type};base64,${attachment.data}" alt="${attachment.filename}" style="max-width: 300px; max-height: 300px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <p style="font-size: 0.85em; color: #666; margin-top: 5px;">${attachment.filename}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>` : ''}
+                
                 <div class="detail-actions">
                     ${complaint.status === 'Resolved' ? 
                         '<button class="btn-primary btn-feedback"><i class="fas fa-comment-alt"></i> Give Feedback</button>' : 
