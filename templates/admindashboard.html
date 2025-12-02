@@ -1172,25 +1172,44 @@
             if (!modal) return;
             
             // Load residents if not already loaded
-            await loadResidentsForMessaging();
+            if (typeof loadResidentsForMessaging === 'function') {
+                loadResidentsForMessaging();
+            }
             
-            // Pre-select the resident email
+            // Load all complaints initially
+            if (typeof loadComplaintsForMessaging === 'function') {
+                loadComplaintsForMessaging(false); // false = not official dashboard
+            }
+            
+            // Pre-select the resident email and complaint after a short delay
             setTimeout(() => {
                 const recipientSelect = document.getElementById('message-recipient');
                 if (recipientSelect && residentEmail) {
+                    // Find and select the option with matching email
                     const options = Array.from(recipientSelect.options);
                     const matchingOption = options.find(opt => opt.value === residentEmail);
                     if (matchingOption) {
                         recipientSelect.value = residentEmail;
+                        
+                        // Trigger change event to filter complaints by this resident
+                        if (typeof filterComplaintsByResident === 'function') {
+                            filterComplaintsByResident(residentEmail, false);
+                        }
                     }
                 }
                 
-                // Set complaint ID
-                const complaintIdField = document.getElementById('message-complaint-id');
-                if (complaintIdField) {
-                    complaintIdField.value = complaintId;
-                }
-            }, 200);
+                // Pre-select the complaint in dropdown after filtering
+                setTimeout(() => {
+                    const complaintSelect = document.getElementById('message-complaint-select');
+                    if (complaintSelect && complaintId) {
+                        const options = Array.from(complaintSelect.options);
+                        const matchingOption = options.find(opt => opt.textContent.includes(complaintId));
+                        if (matchingOption) {
+                            complaintSelect.value = matchingOption.value;
+                        }
+                    }
+                }, 300);
+            }, 500);
             
             // Show the modal
             modal.style.display = 'block';
