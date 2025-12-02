@@ -81,8 +81,14 @@ function loadOfficialsForMessaging() {
     .catch(error => console.error('Error loading officials:', error));
 }
 
+// Store all complaints data for filtering
+let allComplaintsData = {
+    official: [],
+    resident: []
+};
+
 // Load list of complaints for message modal
-function loadComplaintsForMessaging(isOfficial = false) {
+function loadComplaintsForMessaging(isOfficial = false, filterByEmail = null) {
     fetch('/complaint/all', {
         method: 'GET',
         headers: {
@@ -92,6 +98,13 @@ function loadComplaintsForMessaging(isOfficial = false) {
     })
     .then(response => response.json())
     .then(complaints => {
+        // Store all complaints for later filtering
+        if (isOfficial) {
+            allComplaintsData.official = complaints;
+        } else {
+            allComplaintsData.resident = complaints;
+        }
+
         const selectId = isOfficial ? 'message-complaint-official' : 'message-complaint';
         const select = document.getElementById(selectId);
         if (!select) return;
@@ -101,8 +114,18 @@ function loadComplaintsForMessaging(isOfficial = false) {
             select.remove(1);
         }
 
+        // Filter complaints by email if provided
+        let filteredComplaints = complaints;
+        if (filterByEmail) {
+            filteredComplaints = complaints.filter(complaint => 
+                complaint.email === filterByEmail || 
+                complaint.resident_email === filterByEmail ||
+                complaint.user_email === filterByEmail
+            );
+        }
+
         // Add complaint options
-        complaints.forEach(complaint => {
+        filteredComplaints.forEach(complaint => {
             const option = document.createElement('option');
             option.value = complaint.id;
             option.textContent = `${complaint.id} - ${complaint.title || complaint.category}`;
@@ -110,6 +133,39 @@ function loadComplaintsForMessaging(isOfficial = false) {
         });
     })
     .catch(error => console.error('Error loading complaints:', error));
+}
+
+// Filter complaints dropdown based on selected resident
+function filterComplaintsByResident(residentEmail, isOfficial = false) {
+    const selectId = isOfficial ? 'message-complaint-official' : 'message-complaint';
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    // Get stored complaints
+    const complaints = isOfficial ? allComplaintsData.official : allComplaintsData.resident;
+
+    // Clear existing options except the first one
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
+
+    // Filter complaints by resident email
+    let filteredComplaints = complaints;
+    if (residentEmail) {
+        filteredComplaints = complaints.filter(complaint => 
+            complaint.email === residentEmail || 
+            complaint.resident_email === residentEmail ||
+            complaint.user_email === residentEmail
+        );
+    }
+
+    // Add filtered complaint options
+    filteredComplaints.forEach(complaint => {
+        const option = document.createElement('option');
+        option.value = complaint.id;
+        option.textContent = `${complaint.id} - ${complaint.title || complaint.category}`;
+        select.appendChild(option);
+    });
 }
 
 // Load and display notifications for the current user
@@ -788,6 +844,15 @@ function setupOfficialComposeForm() {
     const composeForm = document.getElementById('compose-message-form-official');
     const cancelBtn = composeModal?.querySelector('.cancel-btn');
     const closeBtn = composeModal?.querySelector('.close-btn');
+    const recipientSelect = document.getElementById('message-recipient-official');
+
+    // Add event listener to filter complaints when resident is selected
+    if (recipientSelect) {
+        recipientSelect.addEventListener('change', function() {
+            const selectedEmail = this.value;
+            filterComplaintsByResident(selectedEmail, true);
+        });
+    }
 
     if (composeBtn) {
         composeBtn.addEventListener('click', (e) => {
