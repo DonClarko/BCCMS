@@ -164,16 +164,19 @@ def get_admin_complaints():
         users_data = users_ref.get() or {}
         
         for complaint_id, complaint in complaints_data.items():
-            # Get resident name
+            # Get resident name and email
             user_uid = complaint.get('user_uid')
             resident_name = 'Unknown'
+            resident_email = ''
             if user_uid and user_uid in users_data:
                 resident_name = users_data[user_uid].get('full_name', 'Unknown')
+                resident_email = users_data[user_uid].get('email', '')
             
             complaints_list.append({
                 'id': complaint.get('id', complaint_id),
                 'title': complaint.get('title', 'Untitled'),
                 'resident': resident_name,
+                'resident_email': resident_email,
                 'date': complaint.get('submitted_date', ''),
                 'status': complaint.get('status', 'New')
             })
@@ -357,4 +360,128 @@ def delete_complaint():
         
     except Exception as e:
         print(f"Error deleting complaint: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/residents/list')
+@login_required
+@admin_required
+def get_residents_list():
+    """Get list of all residents for messaging"""
+    try:
+        users_ref = db.reference('users')
+        users_data = users_ref.get() or {}
+        
+        residents_list = []
+        for uid, user in users_data.items():
+            if user.get('role') == 'resident':
+                residents_list.append({
+                    'uid': uid,
+                    'name': user.get('full_name', 'Unknown'),
+                    'email': user.get('email', '')
+                })
+        
+        # Sort by name
+        residents_list.sort(key=lambda x: x.get('name', ''))
+        
+        return jsonify(residents_list)
+        
+    except Exception as e:
+        print(f"Error getting residents list: {str(e)}")
+        return jsonify([])
+
+@admin_bp.route('/messages/list')
+@login_required
+@admin_required
+def get_messages_list():
+    """Get messages for admin from user's messages array"""
+    try:
+        user_uid = session.get('user_uid')
+        if not user_uid:
+            return jsonify([]), 401
+            
+        # Get messages from user's messages array (same as complaints_firebase.py)
+        user_ref = db.reference(f'users/{user_uid}')
+        user = user_ref.get() or {}
+        messages = user.get('messages', [])
+        
+        # Sort by timestamp (newest first)
+        sorted_msgs = sorted(messages, key=lambda m: m.get('timestamp', ''), reverse=True)
+        
+        return jsonify(sorted_msgs)
+        
+    except Exception as e:
+        print(f"Error getting messages: {str(e)}")
+        return jsonify([])
+
+@admin_bp.route('/messages')
+@login_required
+@admin_required
+def get_messages():
+    """Alias for /messages/list for compatibility"""
+    return get_messages_list()
+
+@admin_bp.route('/notifications/list')
+@login_required
+@admin_required
+def get_notifications_list():
+    """Get notifications for admin"""
+    try:
+        # Get notifications from database
+        notifications_ref = db.reference('notifications')
+        notifications_data = notifications_ref.get() or {}
+        
+        notifications_list = []
+        for notif_id, notification in notifications_data.items():
+            notification['id'] = notif_id
+            notifications_list.append(notification)
+        
+        # Sort by timestamp (newest first)
+        notifications_list.sort(key=lambda x: x.get('created_at', x.get('timestamp', '')), reverse=True)
+        
+        return jsonify(notifications_list[:50])  # Return latest 50
+        
+    except Exception as e:
+        print(f"Error getting notifications: {str(e)}")
+        return jsonify([])
+
+@admin_bp.route('/notifications/mark-read', methods=['POST'])
+@login_required
+@admin_required
+def mark_notification_read():
+    """Mark a notification as read"""
+    try:
+        data = request.get_json()
+        notification_id = data.get('notification_id')
+        
+        if not notification_id:
+            return jsonify({'success': False, 'message': 'Notification ID required'}), 400
+        
+        # Update notification
+        notification_ref = db.reference(f'notifications/{notification_id}')
+        notification_ref.update({'read': True})
+        
+        return jsonify({'success': True, 'message': 'Notification marked as read'})
+        
+    except Exception as e:
+        print(f"Error marking notification as read: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/notifications/mark-all-read', methods=['POST'])
+@login_required
+@admin_required
+def mark_all_notifications_read():
+    """Mark all notifications as read"""
+    try:
+        notifications_ref = db.reference('notifications')
+        notifications_data = notifications_ref.get() or {}
+        
+        # Update all notifications
+        for notif_id in notifications_data.keys():
+            notification_ref = db.reference(f'notifications/{notif_id}')
+            notification_ref.update({'read': True})
+        
+        return jsonify({'success': True, 'message': 'All notifications marked as read'})
+        
+    except Exception as e:
+        print(f"Error marking all notifications as read: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500

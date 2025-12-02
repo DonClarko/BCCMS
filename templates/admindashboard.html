@@ -19,12 +19,14 @@
             <nav>
                 <div class="logo">BCCMS Admin</div>
                 <ul class="menu">
-                    <li><a href="#dashboard" class="active">Dashboard</a></li>
-                    <li><a href="#residents">Residents</a></li>
-                    <li><a href="#officials">Officials</a></li>
-                    <li><a href="#complaints">Complaints</a></li>
-                    <li><a href="#settings">Settings</a></li>
-                    <li><a href="{{ url_for('auth.show_auth', form_type='login') }}" class="btn-logout">Logout</a></li>
+                    <li><a href="#dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="#residents"><i class="fas fa-users"></i> Residents</a></li>
+                    <li><a href="#officials"><i class="fas fa-user-tie"></i> Officials</a></li>
+                    <li><a href="#complaints"><i class="fas fa-exclamation-circle"></i> Complaints</a></li>
+                    <li><a href="#messages"><i class="fas fa-envelope"></i> Messages <span class="notification-badge" id="messages-badge" style="display: none;">0</span></a></li>
+                    <li><a href="#notifications"><i class="fas fa-bell"></i> Notifications <span class="notification-badge" id="notifications-badge" style="display: none;">0</span></a></li>
+                    <li><a href="#settings"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li><a href="{{ url_for('auth.show_auth', form_type='login') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </nav>
         </div>
@@ -198,7 +200,508 @@
         </div>
     </footer>
 
+    <!-- Messages Modal -->
+    <div id="messages-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close-btn" onclick="closeModal('messages-modal')">&times;</span>
+            <h2><i class="fas fa-envelope"></i> Messages</h2>
+            <button id="compose-message-btn-admin" class="btn-primary" style="margin-bottom: 15px;">
+                <i class="fas fa-plus"></i> New Message
+            </button>
+            <div class="messages-list" id="admin-messages-list" style="max-height: 500px; overflow-y: auto;">
+                <p style="text-align: center; padding: 20px; color: #666;">Loading messages...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Modal -->
+    <div id="notifications-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close-btn" onclick="closeModal('notifications-modal')">&times;</span>
+            <h2><i class="fas fa-bell"></i> Notifications</h2>
+            <button id="mark-all-read-btn" class="btn-secondary" style="margin-bottom: 15px;">
+                <i class="fas fa-check-double"></i> Mark All as Read
+            </button>
+            <div class="notifications-list" id="admin-notifications-list" style="max-height: 500px; overflow-y: auto;">
+                <p style="text-align: center; padding: 20px; color: #666;">Loading notifications...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Complaint Details Modal -->
+    <div id="complaint-details-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close-btn" onclick="closeModal('complaint-details-modal')">&times;</span>
+            <div id="complaint-details-content">
+                <!-- Content will be loaded here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Update Modal -->
+    <div id="status-update-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-btn" onclick="closeModal('status-update-modal')">&times;</span>
+            <h2><i class="fas fa-edit"></i> Update Complaint Status</h2>
+            <form id="status-update-form">
+                <input type="hidden" id="complaint-id-status" name="complaint_id">
+                <div class="form-group">
+                    <label for="status-select">Status:</label>
+                    <select id="status-select" name="status" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Select Status</option>
+                        <option value="New">New</option>
+                        <option value="Pending Review">Pending Review</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Escalated">Escalated</option>
+                        <option value="Resolved">Resolved</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="status-notes">Notes:</label>
+                    <textarea id="status-notes" name="notes" rows="4" placeholder="Enter details about this status update..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="notify-resident" name="notify_resident" checked>
+                        Notify resident about this update
+                    </label>
+                </div>
+                <div class="form-actions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn-secondary" onclick="closeModal('status-update-modal')">Cancel</button>
+                    <button type="submit" class="btn-primary">Update Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Message Resident Modal -->
+    <div id="message-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-btn" onclick="closeModal('message-modal')">&times;</span>
+            <h2><i class="fas fa-envelope"></i> Send Message to Resident</h2>
+            <form id="message-form">
+                <input type="hidden" id="message-complaint-id" name="complaint_id">
+                <div class="form-group">
+                    <label for="message-recipient">Select Resident:</label>
+                    <select id="message-recipient" name="recipient" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">-- Choose a resident --</option>
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="message-complaint-select">Related Complaint (Optional):</label>
+                    <select id="message-complaint-select" name="complaint" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">-- Select complaint (optional) --</option>
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="message-subject">Subject:</label>
+                    <input type="text" id="message-subject" name="subject" placeholder="Message subject..." required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div class="form-group">
+                    <label for="message-content">Message:</label>
+                    <textarea id="message-content" name="content" placeholder="Type your message here..." required rows="5" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                </div>
+                <div class="form-actions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" class="btn-secondary" onclick="closeModal('message-modal')">Cancel</button>
+                    <button type="submit" class="btn-primary"><i class="fas fa-paper-plane"></i> Send Message</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        // Close modal helper function
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
+
+        // Open modal helper function
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        // Load messages
+        async function loadMessages() {
+            try {
+                const response = await fetch('/messages');
+                const messages = await response.json();
+                
+                const messagesList = document.getElementById('admin-messages-list');
+                if (!messagesList) return;
+                
+                if (!messages || messages.length === 0) {
+                    messagesList.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">No messages yet</p>';
+                    return;
+                }
+                
+                // Group messages by conversation partner
+                const conversations = {};
+                
+                messages.forEach(msg => {
+                    let partnerEmail, partnerName;
+                    
+                    if (msg.isSent) {
+                        partnerEmail = msg.to_email;
+                        partnerName = msg.to_name || msg.to_email;
+                    } else {
+                        partnerEmail = msg.from_email;
+                        partnerName = msg.from_name || msg.from_email;
+                    }
+                    
+                    if (!conversations[partnerEmail]) {
+                        conversations[partnerEmail] = {
+                            name: partnerName,
+                            email: partnerEmail,
+                            messages: [],
+                            latestTimestamp: msg.timestamp
+                        };
+                    }
+                    
+                    conversations[partnerEmail].messages.push({
+                        ...msg,
+                        isFromMe: msg.isSent === true
+                    });
+                    conversations[partnerEmail].latestTimestamp = msg.timestamp;
+                });
+
+                // Sort conversations by latest message
+                const sortedConversations = Object.values(conversations).sort((a, b) => {
+                    return new Date(b.latestTimestamp) - new Date(a.latestTimestamp);
+                });
+
+                messagesList.innerHTML = '';
+                
+                // Display conversations
+                sortedConversations.forEach(convo => {
+                    const latestMsg = convo.messages[convo.messages.length - 1];
+                    const unreadCount = convo.messages.filter(m => !m.read && !m.isSent).length;
+                    
+                    const card = document.createElement('div');
+                    card.className = `message-card ${unreadCount > 0 ? 'unread' : ''}`;
+                    card.style.cssText = 'background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #0466c8; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;';
+                    
+                    const unreadIndicator = unreadCount > 0 ? `<span style="background: #ff6b6b; color: white; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold;">${unreadCount}</span>` : '';
+                    
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                    <i class="fas fa-user-circle" style="font-size: 24px; color: #0466c8;"></i>
+                                    <h4 style="margin: 0; color: #333; font-size: 16px;">${convo.name}</h4>
+                                    ${unreadIndicator}
+                                </div>
+                                <p style="margin: 5px 0; color: #666; font-size: 13px;">${latestMsg.subject || 'No Subject'}</p>
+                                <p style="margin: 5px 0; color: #999; font-size: 12px;">${convo.messages.length} message(s) • ${formatMessageDate(latestMsg.timestamp)}</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    messagesList.appendChild(card);
+                    
+                    // Add click to view conversation
+                    card.addEventListener('click', () => showConversationAdmin(convo));
+                });
+                
+                updateMessagesBadge(messages);
+            } catch (error) {
+                console.error('Error loading messages:', error);
+                const messagesList = document.getElementById('admin-messages-list');
+                if (messagesList) {
+                    messagesList.innerHTML = '<p style="text-align: center; padding: 20px; color: #e74c3c;">Error loading messages</p>';
+                }
+            }
+        }
+
+        // Show conversation modal for admin
+        function showConversationAdmin(conversation) {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.style.display = 'block';
+            
+            let messagesHTML = '';
+            
+            // Sort messages by timestamp (oldest first)
+            const sortedMessages = [...conversation.messages].sort((a, b) => {
+                return new Date(a.timestamp) - new Date(b.timestamp);
+            });
+            
+            sortedMessages.forEach(msg => {
+                const timestamp = new Date(msg.timestamp).toLocaleString();
+                const isFromMe = msg.isSent === true;
+                const senderName = isFromMe ? 'You (Admin)' : (msg.from_name || msg.from_email);
+                
+                if (isFromMe) {
+                    messagesHTML += `
+                        <div style="display: flex; justify-content: flex-end; margin: 15px 0;">
+                            <div style="max-width: 70%; background: #0466c8; color: white; border-radius: 15px 15px 5px 15px; padding: 12px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <p style="margin: 0 0 5px 0; font-size: 13px; opacity: 0.9; font-weight: 600;">${senderName}</p>
+                                ${msg.subject ? `<p style="margin: 0 0 8px 0; font-size: 13px; opacity: 0.85; font-weight: 500; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 5px;">Subject: ${msg.subject}</p>` : ''}
+                                <p style="margin: 0 0 8px 0; white-space: pre-wrap; font-size: 14px; line-height: 1.4;">${msg.content}</p>
+                                <p style="margin: 0; font-size: 11px; opacity: 0.75; text-align: right;">${timestamp}</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    messagesHTML += `
+                        <div style="display: flex; justify-content: flex-start; margin: 15px 0;">
+                            <div style="max-width: 70%; background: #f0f0f0; color: #333; border-radius: 15px 15px 15px 5px; padding: 12px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                <p style="margin: 0 0 5px 0; font-size: 13px; font-weight: 600; color: #0466c8;">${senderName}</p>
+                                ${msg.subject ? `<p style="margin: 0 0 8px 0; font-size: 13px; color: #666; font-weight: 500; border-bottom: 1px solid #ddd; padding-bottom: 5px;">Subject: ${msg.subject}</p>` : ''}
+                                <p style="margin: 0 0 8px 0; white-space: pre-wrap; font-size: 14px; line-height: 1.4;">${msg.content}</p>
+                                <p style="margin: 0; font-size: 11px; color: #999; text-align: left;">${timestamp}</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 750px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;">
+                    <div style="border-bottom: 2px solid #0466c8; padding: 15px 20px; background: linear-gradient(135deg, #0466c8 0%, #0353a4 100%);">
+                        <h2 style="margin: 0; display: flex; align-items: center; justify-content: space-between; color: white;">
+                            <span style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-comments"></i>
+                                <span>${conversation.name}</span>
+                            </span>
+                            <button class="close-btn" style="background: none; border: none; font-size: 28px; cursor: pointer; color: white; opacity: 0.9; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.9'">&times;</button>
+                        </h2>
+                        <p style="margin: 5px 0 0 0; font-size: 13px; color: rgba(255,255,255,0.9);">${conversation.email}</p>
+                    </div>
+                    
+                    <div style="flex: 1; overflow-y: auto; padding: 20px; background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);">
+                        ${messagesHTML}
+                    </div>
+                    
+                    <div style="border-top: 2px solid #e9ecef; padding: 20px; background: #f8f9fa;">
+                        <h4 style="margin: 0 0 12px 0; font-size: 15px; color: #333;"><i class="fas fa-reply"></i> Send Reply</h4>
+                        <form id="admin-reply-form" style="display: flex; flex-direction: column; gap: 12px;">
+                            <input type="text" id="admin-reply-subject" placeholder="Subject" style="padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" required onfocus="this.style.borderColor='#0466c8'" onblur="this.style.borderColor='#dee2e6'">
+                            <textarea id="admin-reply-content" placeholder="Type your message here..." style="padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 14px; resize: vertical; min-height: 100px; transition: border-color 0.2s;" required onfocus="this.style.borderColor='#0466c8'" onblur="this.style.borderColor='#dee2e6'"></textarea>
+                            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                                <button type="button" class="btn-secondary" style="padding: 10px 20px; border: none; background: #6c757d; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s;" onmouseover="this.style.background='#5a6268'" onmouseout="this.style.background='#6c757d'">Cancel</button>
+                                <button type="submit" class="btn-primary" style="padding: 10px 24px; background: #0466c8; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: background 0.2s;" onmouseover="this.style.background='#0353a4'" onmouseout="this.style.background='#0466c8'">
+                                    <i class="fas fa-paper-plane"></i> Send
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            document.body.style.overflow = 'hidden';
+            
+            // Close button handler
+            modal.querySelector('.close-btn').addEventListener('click', () => {
+                modal.remove();
+                document.body.style.overflow = 'auto';
+            });
+            
+            // Cancel button handler
+            modal.querySelector('.btn-secondary').addEventListener('click', () => {
+                modal.remove();
+                document.body.style.overflow = 'auto';
+            });
+            
+            // Form submission
+            modal.querySelector('#admin-reply-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const subject = modal.querySelector('#admin-reply-subject').value;
+                const content = modal.querySelector('#admin-reply-content').value;
+                
+                if (!subject || !content) {
+                    alert('Please fill in all fields');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/messages/send', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            recipient: conversation.email,
+                            subject: subject,
+                            content: content,
+                            complaint_id: null
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('Message sent successfully!');
+                        modal.remove();
+                        document.body.style.overflow = 'auto';
+                        loadMessages();
+                    } else {
+                        alert('Error: ' + (result.message || 'Failed to send message'));
+                    }
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    alert('Failed to send message');
+                }
+            });
+            
+            // Click outside to close
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.remove();
+                    document.body.style.overflow = 'auto';
+                }
+            });
+        }
+
+        // Load notifications
+        async function loadNotifications() {
+            try {
+                const response = await fetch('/notifications/list');
+                const notifications = await response.json();
+                
+                const notificationsList = document.getElementById('admin-notifications-list');
+                if (!notificationsList) return;
+                
+                if (!notifications || notifications.length === 0) {
+                    notificationsList.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">No notifications yet</p>';
+                    return;
+                }
+                
+                notificationsList.innerHTML = '';
+                notifications.forEach(notification => {
+                    const notifCard = document.createElement('div');
+                    notifCard.className = `notification-card ${notification.read ? '' : 'unread'}`;
+                    notifCard.style.cssText = 'background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 4px solid #f57c00; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
+                    
+                    const unreadIndicator = notification.read ? '' : '<span style="display: inline-block; width: 8px; height: 8px; background: #f44336; border-radius: 50%; margin-left: 8px;"></span>';
+                    
+                    notifCard.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                            <h4 style="margin: 0; color: #333;">${notification.title}${unreadIndicator}</h4>
+                            <span style="font-size: 12px; color: #999;">${formatMessageDate(notification.timestamp || notification.created_at)}</span>
+                        </div>
+                        <p style="margin: 5px 0; color: #555; font-size: 14px;">${notification.message}</p>
+                        ${!notification.read ? `<button onclick="markNotificationRead('${notification.id}')" style="margin-top: 8px; padding: 6px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">
+                            <i class="fas fa-check"></i> Mark as Read
+                        </button>` : ''}
+                    `;
+                    notificationsList.appendChild(notifCard);
+                });
+                
+                updateNotificationsBadge(notifications);
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+                const notificationsList = document.getElementById('admin-notifications-list');
+                if (notificationsList) {
+                    notificationsList.innerHTML = '<p style="text-align: center; padding: 20px; color: #e74c3c;">Error loading notifications</p>';
+                }
+            }
+        }
+
+        // Format message date
+        function formatMessageDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) {
+                const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+                if (diffHours === 0) {
+                    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+                    return diffMinutes <= 1 ? 'Just now' : `${diffMinutes} min ago`;
+                }
+                return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+            } else if (diffDays === 1) {
+                return 'Yesterday';
+            } else if (diffDays < 7) {
+                return `${diffDays} days ago`;
+            } else {
+                return date.toLocaleDateString();
+            }
+        }
+
+        // Update messages badge
+        function updateMessagesBadge(messages) {
+            const badge = document.getElementById('messages-badge');
+            if (badge) {
+                // Count only received messages (not sent) that are unread
+                const unreadCount = messages.filter(m => !m.read && !m.isSent).length;
+                badge.textContent = unreadCount;
+                badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
+            }
+        }
+
+        // Update notifications badge
+        function updateNotificationsBadge(notifications) {
+            const badge = document.getElementById('notifications-badge');
+            if (badge) {
+                const unreadCount = notifications.filter(n => !n.read).length;
+                badge.textContent = unreadCount;
+                badge.style.display = unreadCount > 0 ? 'inline-block' : 'none';
+            }
+        }
+
+        // View message details
+        function viewMessageDetails(messageId) {
+            alert('View message details: ' + messageId + '\n\nThis will show full message content.');
+        }
+
+        // Mark notification as read
+        async function markNotificationRead(notificationId) {
+            try {
+                const response = await fetch('/notifications/mark-read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ notification_id: notificationId })
+                });
+                
+                if (response.ok) {
+                    loadNotifications();
+                }
+            } catch (error) {
+                console.error('Error marking notification as read:', error);
+            }
+        }
+
+        // Mark all notifications as read
+        async function markAllNotificationsRead() {
+            try {
+                const response = await fetch('/notifications/mark-all-read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (response.ok) {
+                    loadNotifications();
+                }
+            } catch (error) {
+                console.error('Error marking all notifications as read:', error);
+            }
+        }
+
         // Load admin dashboard data
         document.addEventListener('DOMContentLoaded', function() {
             loadStats();
@@ -206,6 +709,168 @@
             loadComplaints();
             loadUsers();
             loadAnalytics();
+            loadMessages();
+            loadNotifications();
+            
+            // Messages navigation link handler
+            document.querySelectorAll('a[href="#messages"]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    openModal('messages-modal');
+                    loadMessages();
+                });
+            });
+            
+            // Notifications navigation link handler
+            document.querySelectorAll('a[href="#notifications"]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    openModal('notifications-modal');
+                    loadNotifications();
+                });
+            });
+            
+            // Compose message button handler
+            const composeMessageBtn = document.getElementById('compose-message-btn-admin');
+            if (composeMessageBtn) {
+                composeMessageBtn.addEventListener('click', function() {
+                    closeModal('messages-modal');
+                    openModal('message-modal');
+                    
+                    // Load residents using shared function from messaging.js
+                    if (typeof loadResidentsForMessaging === 'function') {
+                        loadResidentsForMessaging();
+                    }
+                    
+                    // Load all complaints initially using shared function
+                    if (typeof loadComplaintsForMessaging === 'function') {
+                        loadComplaintsForMessaging(false); // false = not official dashboard
+                    }
+                });
+            }
+            
+            // Add event listener for resident selection to filter complaints
+            const recipientSelect = document.getElementById('message-recipient');
+            if (recipientSelect) {
+                recipientSelect.addEventListener('change', function() {
+                    const selectedEmail = this.value;
+                    // Use shared filtering function from messaging.js
+                    if (typeof filterComplaintsByResident === 'function') {
+                        filterComplaintsByResident(selectedEmail, false); // false = not official dashboard
+                    }
+                });
+            }
+            
+            // Mark all notifications as read button handler
+            const markAllReadBtn = document.getElementById('mark-all-read-btn');
+            if (markAllReadBtn) {
+                markAllReadBtn.addEventListener('click', function() {
+                    markAllNotificationsRead();
+                });
+            }
+            
+            // Refresh messages and notifications every 30 seconds
+            setInterval(() => {
+                loadMessages();
+                loadNotifications();
+            }, 30000);
+            
+            // Status update form submission
+            const statusUpdateForm = document.getElementById('status-update-form');
+            if (statusUpdateForm) {
+                statusUpdateForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const complaintId = document.getElementById('complaint-id-status').value;
+                    const status = document.getElementById('status-select').value;
+                    const notes = document.getElementById('status-notes').value;
+                    const notifyResident = document.getElementById('notify-resident').checked;
+                    
+                    try {
+                        const response = await fetch('/complaint/update', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                complaint_id: complaintId,
+                                status: status,
+                                notes: notes,
+                                notify_resident: notifyResident
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            alert('Complaint status updated successfully!');
+                            closeModal('status-update-modal');
+                            loadComplaints();
+                            loadStats();
+                            loadAnalytics();
+                        } else {
+                            alert('Error updating complaint: ' + data.message);
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Error updating complaint status');
+                    }
+                });
+            }
+            
+            // Message form submission
+            const messageForm = document.getElementById('message-form');
+            if (messageForm) {
+                messageForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const toEmail = document.getElementById('message-recipient').value;
+                    const subject = document.getElementById('message-subject').value;
+                    const content = document.getElementById('message-content').value;
+                    const complaintId = document.getElementById('message-complaint-select').value || null;
+                    
+                    if (!toEmail) {
+                        alert('Please select a resident');
+                        return;
+                    }
+                    
+                    if (!subject || !content) {
+                        alert('Please fill in all required fields');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('/message/send', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({
+                                to_email: toEmail,
+                                subject: subject,
+                                content: content,
+                                complaint_id: complaintId
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            alert('Message sent successfully!');
+                            closeModal('message-modal');
+                            messageForm.reset();
+                            loadMessages(); // Refresh messages list
+                        } else {
+                            alert('Error sending message: ' + (data.error || data.message || 'Unknown error'));
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Error sending message');
+                    }
+                });
+            }
         });
 
         // Load dashboard statistics
@@ -309,8 +974,10 @@
                             <td><span class="status ${statusClass}">${complaint.status}</span></td>
                             <td>
                                 <div class="action-buttons">
-                                    <button class="btn edit" onclick="viewComplaint('${complaint.id}')"><i class="fas fa-eye"></i></button>
-                                    <button class="btn delete" onclick="deleteComplaint('${complaint.id}')"><i class="fas fa-trash"></i></button>
+                                    <button class="btn view" onclick="viewComplaint('${complaint.id}')" title="View Details"><i class="fas fa-eye"></i></button>
+                                    <button class="btn edit" onclick="updateComplaintStatus('${complaint.id}')" title="Update Status"><i class="fas fa-edit"></i></button>
+                                    <button class="btn message" onclick="messageResident('${complaint.id}', '${complaint.resident_email}')" title="Message Resident"><i class="fas fa-envelope"></i></button>
+                                    <button class="btn delete" onclick="deleteComplaint('${complaint.id}')" title="Delete Complaint"><i class="fas fa-trash"></i></button>
                                 </div>
                             </td>
                         `;
@@ -393,8 +1060,141 @@
 
         // View complaint details
         function viewComplaint(complaintId) {
-            // Navigate to complaint details or open modal
-            alert('View complaint: ' + complaintId + '\n\nThis feature will show complaint details.');
+            showComplaintDetails(complaintId);
+        }
+
+        // Show complaint details modal
+        async function showComplaintDetails(complaintId) {
+            try {
+                const response = await fetch(`/complaint/details?id=${complaintId}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch complaint details');
+                const complaint = await response.json();
+
+                const detailsContent = document.getElementById('complaint-details-content');
+                detailsContent.innerHTML = `
+                    <h2>Complaint Details - ${complaint.id}</h2>
+                    <div class="complaint-details-card">
+                        <div class="detail-row">
+                            <p><strong>Status:</strong> <span class="status ${complaint.status.toLowerCase().replace(' ', '-')}">${complaint.status}</span></p>
+                            <p><strong>Urgency:</strong> <span class="urgency ${complaint.urgency ? complaint.urgency.toLowerCase() : 'low'}">${complaint.urgency || 'N/A'}</span></p>
+                        </div>
+                        <div class="detail-row">
+                            <p><strong>Submitted by:</strong> ${complaint.user_name}</p>
+                            <p><strong>Submitted on:</strong> ${new Date(complaint.submitted_date).toLocaleDateString()}</p>
+                        </div>
+                        <div class="detail-row">
+                            <p><strong>Category:</strong> ${complaint.category || 'N/A'}</p>
+                            <p><strong>Location:</strong> ${complaint.location || 'N/A'}</p>
+                        </div>
+                        <div class="detail-row">
+                            <h3>Description</h3>
+                            <p>${complaint.description}</p>
+                        </div>
+                        ${complaint.attachments?.length ? `
+                        <div class="detail-row">
+                            <h3>Uploaded Evidence</h3>
+                            <div class="complaint-images">
+                                ${complaint.attachments.map(attachment => `
+                                    <div class="image-item">
+                                        <img src="data:${attachment.mime_type};base64,${attachment.data}" alt="${attachment.filename}" style="max-width: 300px; max-height: 300px; margin: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        <p style="font-size: 0.85em; color: #666; text-align: center;">${attachment.filename}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>` : ''}
+                        ${complaint.updates?.length ? `
+                        <div class="detail-row">
+                            <h3>Update History</h3>
+                            <div class="update-history">
+                                ${complaint.updates.map(update => `
+                                    <div class="update-item">
+                                        <p><strong>${new Date(update.timestamp).toLocaleString()}</strong></p>
+                                        <p>Status changed from ${update.from_status} to ${update.to_status}</p>
+                                        ${update.action_note ? `<p>Notes: ${update.action_note}</p>` : ''}
+                                        <p>Updated by: ${update.by_official || 'System'}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>` : ''}
+                        <div class="detail-actions">
+                            <button class="btn-secondary close-details">Close</button>
+                        </div>
+                    </div>
+                `;
+
+                const modal = document.getElementById('complaint-details-modal');
+                modal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+
+                detailsContent.querySelector('.close-details')?.addEventListener('click', () => {
+                    modal.style.display = 'none';
+                    document.body.style.overflow = 'auto';
+                });
+            } catch (error) {
+                console.error('Error loading complaint details:', error);
+                alert('Failed to load complaint details. Please try again.');
+            }
+        }
+
+        // Update complaint status
+        function updateComplaintStatus(complaintId) {
+            const modal = document.getElementById('status-update-modal');
+            if (!modal) return;
+            
+            // Set complaint ID in hidden field
+            const complaintIdField = document.getElementById('complaint-id-status');
+            if (complaintIdField) {
+                complaintIdField.value = complaintId;
+            }
+            
+            // Reset form fields
+            const statusSelect = document.getElementById('status-select');
+            const statusNotes = document.getElementById('status-notes');
+            
+            if (statusSelect) statusSelect.selectedIndex = 0;
+            if (statusNotes) statusNotes.value = '';
+            
+            // Show the modal
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Message resident
+        async function messageResident(complaintId, residentEmail) {
+            const modal = document.getElementById('message-modal');
+            if (!modal) return;
+            
+            // Load residents if not already loaded
+            await loadResidentsForMessaging();
+            
+            // Pre-select the resident email
+            setTimeout(() => {
+                const recipientSelect = document.getElementById('message-recipient');
+                if (recipientSelect && residentEmail) {
+                    const options = Array.from(recipientSelect.options);
+                    const matchingOption = options.find(opt => opt.value === residentEmail);
+                    if (matchingOption) {
+                        recipientSelect.value = residentEmail;
+                    }
+                }
+                
+                // Set complaint ID
+                const complaintIdField = document.getElementById('message-complaint-id');
+                if (complaintIdField) {
+                    complaintIdField.value = complaintId;
+                }
+            }, 200);
+            
+            // Show the modal
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
         }
 
         // Delete complaint
@@ -461,5 +1261,6 @@
             });
         }
     </script>
+    <script src="{{ url_for('static', filename='js/messaging.js') }}"></script>
 </body>
 </html>

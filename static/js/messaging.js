@@ -19,9 +19,12 @@ function loadResidentsForMessaging() {
     })
     .then(residents => {
         console.log('Residents received:', residents);
-        const select = document.getElementById('message-recipient-official');
+        
+        // Try both admin and official dashboard IDs
+        const select = document.getElementById('message-recipient-official') || 
+                      document.getElementById('message-recipient');
         if (!select) {
-            console.error('message-recipient-official select not found!');
+            console.error('Recipient select element not found!');
             return;
         }
 
@@ -105,8 +108,11 @@ function loadComplaintsForMessaging(isOfficial = false, filterByEmail = null) {
             allComplaintsData.resident = complaints;
         }
 
-        const selectId = isOfficial ? 'message-complaint-official' : 'message-complaint';
-        const select = document.getElementById(selectId);
+        // Try both official and admin dashboard IDs
+        const selectId = isOfficial ? 'message-complaint-official' : 'message-complaint-select';
+        const select = document.getElementById(selectId) || 
+                      document.getElementById('message-complaint-official') ||
+                      document.getElementById('message-complaint-select');
         if (!select) return;
 
         // Clear existing options except the first one
@@ -137,8 +143,11 @@ function loadComplaintsForMessaging(isOfficial = false, filterByEmail = null) {
 
 // Filter complaints dropdown based on selected resident
 function filterComplaintsByResident(residentEmail, isOfficial = false) {
-    const selectId = isOfficial ? 'message-complaint-official' : 'message-complaint';
-    const select = document.getElementById(selectId);
+    // Try both official and admin dashboard IDs
+    const selectId = isOfficial ? 'message-complaint-official' : 'message-complaint-select';
+    const select = document.getElementById(selectId) || 
+                  document.getElementById('message-complaint-official') ||
+                  document.getElementById('message-complaint-select');
     if (!select) return;
 
     // Get stored complaints
