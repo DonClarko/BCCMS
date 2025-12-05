@@ -77,5 +77,5 @@ def get_notifications_collection():
     """Get notifications collection reference"""
     return get_db().collection('notifications')
 
-# Initialize Firebase on module import
-initialize_firebase()
+# Don't initialize on module import - let it be called explicitly
+# This prevents issues with serverless environments like Vercel
