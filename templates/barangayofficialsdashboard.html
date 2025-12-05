@@ -17,21 +17,12 @@
     <header>
         <div class="container">
             <nav>
-                <div class="logo">BCCMS</div>
+                <div class="logo">BCCMS Officials <span class="logo-dashboard">Dashboard</span></div>
                 <ul class="menu">
-                    <li><a href="#dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                    <li><a href="#complaints"><i class="fas fa-exclamation-circle"></i> Complaints</a></li>
-                    <li><a href="#messages"><i class="fas fa-envelope"></i> Messages</a></li>
-                    <li><a href="#notifications"><i class="fas fa-bell"></i> Notifications</a></li>
-                    <li><a href="#feedback"><i class="fas fa-comment-alt"></i> Feedback</a></li>
-                    <li class="user-menu">
-                        <a href="#profile"><i class="fas fa-user-circle"></i> Profile</a>
-                        <div class="dropdown-content">
-                            <a href="#profile"><i class="fas fa-user"></i> My Profile</a>
-                            <a href="#settings"><i class="fas fa-cog"></i> Settings</a>
-                            <a href="{{ url_for('auth.show_auth', form_type='login') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
-                        </div>
-                    </li>
+                    <li><a href="#messages" class="icon-btn" title="Messages"><i class="fas fa-envelope"></i><span class="notification-badge" id="messages-badge" style="display: none;">0</span></a></li>
+                    <li><a href="#notifications" class="icon-btn" title="Notifications"><i class="fas fa-bell"></i><span class="notification-badge" id="notifications-badge" style="display: none;">0</span></a></li>
+                    <li><a href="#feedback" class="icon-btn" title="Feedback"><i class="fas fa-comment-alt"></i></a></li>
+                    <li><a href="{{ url_for('auth.show_auth', form_type='login') }}" class="icon-btn logout-icon" title="Logout"><i class="fas fa-sign-out-alt"></i></a></li>
                 </ul>
                 <div class="mobile-menu-toggle">
                     <i class="fas fa-bars"></i>
@@ -42,14 +33,10 @@
 
     <!-- Mobile Menu -->
     <div class="mobile-menu">
-        <a href="#dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-        <a href="#complaints"><i class="fas fa-exclamation-circle"></i> Complaints</a>
         <a href="#messages"><i class="fas fa-envelope"></i> Messages</a>
         <a href="#notifications"><i class="fas fa-bell"></i> Notifications</a>
         <a href="#feedback"><i class="fas fa-comment-alt"></i> Feedback</a>
-        <a href="#profile"><i class="fas fa-user"></i> Profile</a>
-        <a href="#settings"><i class="fas fa-cog"></i> Settings</a>
-        <a href="{{ url_for('auth.show_auth', form_type='login') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        <a href="{{ url_for('auth.show_auth', form_type='login') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </div>
 
     <!-- Main Content -->
