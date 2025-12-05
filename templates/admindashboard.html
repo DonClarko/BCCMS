@@ -132,6 +132,29 @@
             </table>
         </section>
 
+        <!-- Pending Official Registrations Section -->
+        <section class="content-area" style="margin-top: 40px;" id="pending-registrations-section">
+            <div class="section-header">
+                <h2>Pending Official Registrations <span class="notification-badge" id="pending-reg-badge" style="display: none;">0</span></h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Date Applied</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="pending-registrations-body">
+                    <tr>
+                        <td colspan="5" class="loading">Loading pending registrations...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
         <!-- User Management Section -->
         <section class="content-area" style="margin-top: 40px;">
             <div class="section-header">
@@ -199,6 +222,17 @@
             <p>&copy; 2025 Barangay Complaint Management System. All rights reserved.</p>
         </div>
     </footer>
+
+    <!-- User Details Modal -->
+    <div id="user-details-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-btn" onclick="closeModal('user-details-modal')">&times;</span>
+            <h2><i class="fas fa-user"></i> User Details</h2>
+            <div id="user-details-content" style="padding: 20px 0;">
+                <p style="text-align: center; color: #666;">Loading user details...</p>
+            </div>
+        </div>
+    </div>
 
     <!-- Messages Modal -->
     <div id="messages-modal" class="modal" style="display: none;">
@@ -736,6 +770,7 @@
             loadStats();
             loadRecentActivity();
             loadComplaints();
+            loadPendingRegistrations();
             loadUsers();
             loadAnalytics();
             loadMessages();
@@ -1120,7 +1155,7 @@
                             <td><span class="role ${roleClass}">${roleText}</span></td>
                             <td>
                                 <div class="action-buttons">
-                                    <button class="btn edit" onclick="editUser('${user.uid}')"><i class="fas fa-edit"></i></button>
+                                    <button class="btn view" onclick="viewUserDetails('${user.uid}')" title="View Details"><i class="fas fa-eye"></i></button>
                                     <button class="btn delete" onclick="deleteUser('${user.uid}', '${user.name}')"><i class="fas fa-trash"></i></button>
                                 </div>
                             </td>
@@ -1133,6 +1168,122 @@
                     document.getElementById('users-table-body').innerHTML = 
                         '<tr><td colspan="4" class="loading">Error loading users</td></tr>';
                 });
+        }
+
+        // Load pending registrations
+        function loadPendingRegistrations() {
+            fetch('/admin/pending-registrations')
+                .then(response => response.json())
+                .then(registrations => {
+                    const tbody = document.getElementById('pending-registrations-body');
+                    const badge = document.getElementById('pending-reg-badge');
+                    const section = document.getElementById('pending-registrations-section');
+                    
+                    if (registrations.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="loading">No pending registrations</td></tr>';
+                        badge.style.display = 'none';
+                        return;
+                    }
+
+                    // Show badge with count
+                    badge.textContent = registrations.length;
+                    badge.style.display = 'inline-block';
+
+                    tbody.innerHTML = '';
+                    registrations.forEach(reg => {
+                        const row = document.createElement('tr');
+                        
+                        // Format date
+                        let dateDisplay = 'N/A';
+                        if (reg.created_at) {
+                            const date = new Date(reg.created_at);
+                            dateDisplay = date.toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                            });
+                        }
+                        
+                        row.innerHTML = `
+                            <td>${reg.name}</td>
+                            <td>${reg.email}</td>
+                            <td>${reg.phone || 'N/A'}</td>
+                            <td>${dateDisplay}</td>
+                            <td>
+                                <div class="action-buttons" style="display: flex; gap: 12px; justify-content: center;">
+                                    <button class="btn approve" onclick="approveRegistration('${reg.uid}', '${reg.name}')" title="Approve" style="background-color: #28a745; color: white; width: 36px; height: 36px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button class="btn reject" onclick="rejectRegistration('${reg.uid}', '${reg.name}')" title="Reject" style="background-color: #dc3545; color: white; width: 36px; height: 36px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading pending registrations:', error);
+                    document.getElementById('pending-registrations-body').innerHTML = 
+                        '<tr><td colspan="5" class="loading">Error loading pending registrations</td></tr>';
+                });
+        }
+
+        // Approve registration
+        function approveRegistration(uid, name) {
+            if (!confirm(`Are you sure you want to approve ${name}'s registration as Barangay Official?`)) {
+                return;
+            }
+            
+            fetch(`/admin/approve-registration/${uid}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    loadPendingRegistrations();
+                    loadUsers();
+                    loadStats();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error approving registration:', error);
+                alert('Error approving registration');
+            });
+        }
+
+        // Reject registration
+        function rejectRegistration(uid, name) {
+            if (!confirm(`Are you sure you want to reject ${name}'s registration?`)) {
+                return;
+            }
+            
+            fetch(`/admin/reject-registration/${uid}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    loadPendingRegistrations();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error rejecting registration:', error);
+                alert('Error rejecting registration');
+            });
         }
 
         // Load analytics
@@ -1346,8 +1497,116 @@
         }
 
         // Edit user
-        function editUser(userId) {
-            alert('Edit user: ' + userId + '\n\nThis feature will allow editing user details.');
+        // View user details
+        function viewUserDetails(userId) {
+            openModal('user-details-modal');
+            document.getElementById('user-details-content').innerHTML = 
+                '<p style="text-align: center; color: #666;">Loading user details...</p>';
+            
+            fetch(`/admin/user/${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const user = data.user;
+                        
+                        // Format dates
+                        let createdDate = 'N/A';
+                        if (user.created_at) {
+                            const date = new Date(user.created_at);
+                            createdDate = date.toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                        }
+                        
+                        let approvedDate = 'N/A';
+                        if (user.approved_at) {
+                            const date = new Date(user.approved_at);
+                            approvedDate = date.toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                        }
+                        
+                        // Determine role display
+                        let roleDisplay = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+                        let roleColor = user.role === 'official' ? '#28a745' : '#17a2b8';
+                        
+                        // Determine status display
+                        let statusDisplay = user.status ? user.status.replace('_', ' ').charAt(0).toUpperCase() + user.status.slice(1).replace('_', ' ') : 'Approved';
+                        let statusColor = user.status === 'approved' ? '#28a745' : '#ffc107';
+                        
+                        document.getElementById('user-details-content').innerHTML = `
+                            <div style="display: flex; flex-direction: column; gap: 15px;">
+                                <div style="text-align: center; padding-bottom: 15px; border-bottom: 1px solid #eee;">
+                                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-user" style="font-size: 36px; color: white;"></i>
+                                    </div>
+                                    <h3 style="margin: 0; color: #333;">${user.full_name}</h3>
+                                    <span style="background: ${roleColor}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 12px;">${roleDisplay}</span>
+                                </div>
+                                
+                                <div style="display: grid; gap: 12px;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <i class="fas fa-envelope" style="color: #667eea; width: 20px;"></i>
+                                        <div>
+                                            <small style="color: #999;">Email</small>
+                                            <p style="margin: 0; color: #333;">${user.email}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <i class="fas fa-phone" style="color: #667eea; width: 20px;"></i>
+                                        <div>
+                                            <small style="color: #999;">Phone</small>
+                                            <p style="margin: 0; color: #333;">${user.phone || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <i class="fas fa-check-circle" style="color: ${statusColor}; width: 20px;"></i>
+                                        <div>
+                                            <small style="color: #999;">Status</small>
+                                            <p style="margin: 0; color: #333;">${statusDisplay}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <i class="fas fa-calendar-plus" style="color: #667eea; width: 20px;"></i>
+                                        <div>
+                                            <small style="color: #999;">Registered On</small>
+                                            <p style="margin: 0; color: #333;">${createdDate}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    ${user.approved_at ? `
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <i class="fas fa-calendar-check" style="color: #28a745; width: 20px;"></i>
+                                        <div>
+                                            <small style="color: #999;">Approved On</small>
+                                            <p style="margin: 0; color: #333;">${approvedDate}</p>
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        document.getElementById('user-details-content').innerHTML = 
+                            '<p style="text-align: center; color: #dc3545;">Error loading user details</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading user details:', error);
+                    document.getElementById('user-details-content').innerHTML = 
+                        '<p style="text-align: center; color: #dc3545;">Error loading user details</p>';
+                });
         }
 
         // Delete user

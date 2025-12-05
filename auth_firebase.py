@@ -105,6 +105,16 @@ def login():
             flash('User profile not found', 'error')
             return redirect(url_for('auth.show_auth', form_type='login'))
         
+        # Check if official account is pending approval
+        if user_info.get('role') == 'official' and user_info.get('status') == 'pending_approval':
+            flash('Your account is pending admin approval. Please wait for confirmation.', 'warning')
+            return redirect(url_for('auth.show_auth', form_type='login'))
+        
+        # Check if account was rejected
+        if user_info.get('status') == 'rejected':
+            flash('Your registration was not approved. Please contact the admin for more information.', 'error')
+            return redirect(url_for('auth.show_auth', form_type='login'))
+        
         # Check role
         if user_info.get('role') != role and not user_info.get('is_admin', False):
             flash(f'Please login as {user_info["role"]}', 'error')
@@ -171,9 +181,16 @@ def signup():
             'created_at': datetime.now().isoformat()
         }
         
-        user_ref.set(user_data)
+        # If signing up as official, set status to pending approval
+        if role == 'official':
+            user_data['status'] = 'pending_approval'
+            user_ref.set(user_data)
+            flash('Registration submitted! Please wait for admin approval before you can login.', 'info')
+        else:
+            user_data['status'] = 'approved'
+            user_ref.set(user_data)
+            flash('Account created successfully! Please login.', 'success')
         
-        flash('Account created successfully! Please login.', 'success')
         return redirect(url_for('auth.show_auth', form_type='login'))
         
     except firebase_auth.EmailAlreadyExistsError:

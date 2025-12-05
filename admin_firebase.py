@@ -194,7 +194,7 @@ def get_admin_complaints():
 @login_required
 @admin_required
 def get_admin_users():
-    """Get all users for admin dashboard"""
+    """Get all users for admin dashboard (excludes admin users and pending/rejected)"""
     try:
         users_ref = db.reference('users')
         users_data = users_ref.get() or {}
@@ -204,6 +204,14 @@ def get_admin_users():
         
         users_list = []
         for uid, user in users_data.items():
+            # Skip admin users - they should not appear in user management
+            if user.get('is_admin', False):
+                continue
+            
+            # Skip pending or rejected users - they should be in pending registrations section
+            if user.get('status') in ['pending_approval', 'rejected']:
+                continue
+                
             users_list.append({
                 'uid': uid,
                 'name': user.get('full_name', 'Unknown'),
@@ -298,6 +306,38 @@ def get_complaint_analytics():
     except Exception as e:
         print(f"Error getting complaint analytics: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/admin/user/<uid>')
+@login_required
+@admin_required
+def get_user_details(uid):
+    """Get user details for viewing"""
+    try:
+        user_ref = db.reference(f'users/{uid}')
+        user_data = user_ref.get()
+        
+        if not user_data:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        # Return user details (excluding sensitive data like password)
+        return jsonify({
+            'success': True,
+            'user': {
+                'uid': uid,
+                'full_name': user_data.get('full_name', 'Unknown'),
+                'email': user_data.get('email', ''),
+                'phone': user_data.get('phone', 'N/A'),
+                'role': user_data.get('role', 'resident'),
+                'status': user_data.get('status', 'approved'),
+                'created_at': user_data.get('created_at', ''),
+                'approved_at': user_data.get('approved_at', ''),
+                'is_admin': user_data.get('is_admin', False)
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error getting user details: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @admin_bp.route('/admin/user/delete', methods=['POST'])
 @login_required
@@ -454,3 +494,115 @@ def mark_all_notifications_read():
     except Exception as e:
         print(f"Error marking all notifications as read: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+# ============ PENDING REGISTRATIONS MANAGEMENT ============
+
+@admin_bp.route('/admin/pending-registrations')
+@login_required
+@admin_required
+def get_pending_registrations():
+    """Get all pending official registrations for admin approval"""
+    try:
+        users_ref = db.reference('users')
+        users_data = users_ref.get() or {}
+        
+        pending_list = []
+        for uid, user in users_data.items():
+            # Only get officials with pending_approval status
+            if user.get('role') == 'official' and user.get('status') == 'pending_approval':
+                pending_list.append({
+                    'uid': uid,
+                    'name': user.get('full_name', 'Unknown'),
+                    'email': user.get('email', ''),
+                    'phone': user.get('phone', ''),
+                    'created_at': user.get('created_at', '')
+                })
+        
+        # Sort by created_at (newest first)
+        pending_list.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        return jsonify(pending_list)
+        
+    except Exception as e:
+        print(f"Error getting pending registrations: {str(e)}")
+        return jsonify([])
+
+@admin_bp.route('/admin/approve-registration/<uid>', methods=['POST'])
+@login_required
+@admin_required
+def approve_registration(uid):
+    """Approve a pending official registration"""
+    try:
+        user_ref = db.reference(f'users/{uid}')
+        user_data = user_ref.get()
+        
+        if not user_data:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        if user_data.get('status') != 'pending_approval':
+            return jsonify({'success': False, 'message': 'User is not pending approval'}), 400
+        
+        # Update user status to approved
+        user_ref.update({
+            'status': 'approved',
+            'approved_at': datetime.now().isoformat(),
+            'approved_by': session.get('user_uid')
+        })
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Registration approved for {user_data.get("full_name", "user")}'
+        })
+        
+    except Exception as e:
+        print(f"Error approving registration: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/admin/reject-registration/<uid>', methods=['POST'])
+@login_required
+@admin_required
+def reject_registration(uid):
+    """Reject a pending official registration"""
+    try:
+        user_ref = db.reference(f'users/{uid}')
+        user_data = user_ref.get()
+        
+        if not user_data:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        if user_data.get('status') != 'pending_approval':
+            return jsonify({'success': False, 'message': 'User is not pending approval'}), 400
+        
+        # Update user status to rejected
+        user_ref.update({
+            'status': 'rejected',
+            'rejected_at': datetime.now().isoformat(),
+            'rejected_by': session.get('user_uid')
+        })
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Registration rejected for {user_data.get("full_name", "user")}'
+        })
+        
+    except Exception as e:
+        print(f"Error rejecting registration: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/admin/pending-count')
+@login_required
+@admin_required
+def get_pending_count():
+    """Get count of pending registrations"""
+    try:
+        users_ref = db.reference('users')
+        users_data = users_ref.get() or {}
+        
+        pending_count = sum(1 for u in users_data.values() 
+                          if u.get('role') == 'official' and u.get('status') == 'pending_approval')
+        
+        return jsonify({'count': pending_count})
+        
+    except Exception as e:
+        print(f"Error getting pending count: {str(e)}")
+        return jsonify({'count': 0})
