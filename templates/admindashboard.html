@@ -17,16 +17,12 @@
     <header>
         <div class="container">
             <nav>
-                <div class="logo">BCCMS Admin</div>
+                <div class="logo">BCCMS Admin <span class="logo-dashboard">Dashboard</span></div>
                 <ul class="menu">
-                    <li><a href="#dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                    <li><a href="#" class="nav-quick-link" data-section="user-management"><i class="fas fa-users"></i> Users</a></li>
-                    <li><a href="#" class="nav-quick-link" data-section="pending-approvals"><i class="fas fa-user-tie"></i> Approvals</a></li>
-                    <li><a href="#" class="nav-quick-link" data-section="complaints-management"><i class="fas fa-exclamation-circle"></i> Complaints</a></li>
-                    <li><a href="#messages"><i class="fas fa-envelope"></i> Messages <span class="notification-badge" id="messages-badge" style="display: none;">0</span></a></li>
-                    <li><a href="#notifications"><i class="fas fa-bell"></i> Notifications <span class="notification-badge" id="notifications-badge" style="display: none;">0</span></a></li>
-                    <li><a href="#feedback"><i class="fas fa-comment-alt"></i> Feedback</a></li>
-                    <li><a href="{{ url_for('auth.show_auth', form_type='login') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                    <li><a href="#messages" class="icon-btn" title="Messages"><i class="fas fa-envelope"></i><span class="notification-badge" id="messages-badge" style="display: none;">0</span></a></li>
+                    <li><a href="#notifications" class="icon-btn" title="Notifications"><i class="fas fa-bell"></i><span class="notification-badge" id="notifications-badge" style="display: none;">0</span></a></li>
+                    <li><a href="#feedback" class="icon-btn" title="Feedback"><i class="fas fa-comment-alt"></i></a></li>
+                    <li><a href="{{ url_for('auth.show_auth', form_type='login') }}" class="icon-btn logout-icon" title="Logout"><i class="fas fa-sign-out-alt"></i></a></li>
                 </ul>
             </nav>
         </div>
@@ -815,15 +811,6 @@
             
             // Quick navigation sidebar links
             document.querySelectorAll('.quick-nav-link').forEach(link => {
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const sectionName = this.dataset.section;
-                    switchQuickNavSection(sectionName);
-                });
-            });
-            
-            // Top navbar quick links (Users, Approvals, Complaints)
-            document.querySelectorAll('.nav-quick-link').forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
                     const sectionName = this.dataset.section;

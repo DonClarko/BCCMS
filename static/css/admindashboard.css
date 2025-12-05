@@ -36,15 +36,27 @@ nav {
 .logo {
     font-size: 24px;
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logo-dashboard {
+    font-size: 16px;
+    font-weight: 500;
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: 6px 14px;
+    border-radius: 5px;
 }
 
 .menu {
     display: flex;
     list-style: none;
+    align-items: center;
 }
 
 .menu li {
-    margin-left: 20px;
+    margin-left: 15px;
 }
 
 .menu a {
@@ -58,6 +70,47 @@ nav {
 
 .menu a:hover, .menu a.active {
     background-color: #0353a4;
+}
+
+/* Icon buttons in navbar */
+.icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.15);
+    padding: 0 !important;
+    position: relative;
+}
+
+.icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.icon-btn i {
+    font-size: 16px;
+}
+
+.icon-btn .notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logout-icon {
+    background-color: #e63946 !important;
+}
+
+.logout-icon:hover {
+    background-color: #d62828 !important;
 }
 
 .btn-logout {
