@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, session
-from firebase_admin import db
+from firebase_admin import firestore
+from firebase_config import get_db
 from datetime import datetime
 from auth_firebase import login_required
 import json
@@ -44,13 +45,13 @@ def submit_feedback():
             'status': 'new'
         }
         
-        # Save to Firebase
-        feedback_ref = db.reference('feedback')
-        new_feedback = feedback_ref.push(feedback_data)
-        feedback_id = new_feedback.key
+        # Save to Firestore
+        db = get_db()
+        doc_ref = db.collection('feedback').add(feedback_data)
+        feedback_id = doc_ref[1].id
         
         # Update the feedback with its ID
-        feedback_ref.child(feedback_id).update({'id': feedback_id})
+        db.collection('feedback').document(feedback_id).update({'id': feedback_id})
         
         return jsonify({
             'success': True,
@@ -81,19 +82,19 @@ def get_recent_feedback():
                 'message': 'Access denied'
             }), 403
         
-        # Get feedback from Firebase
-        feedback_ref = db.reference('feedback')
-        feedback_data = feedback_ref.get()
+        # Get feedback from Firestore
+        db = get_db()
+        feedback_ref = db.collection('feedback')
+        feedback_docs = feedback_ref.stream()
         
-        if not feedback_data:
-            return jsonify([]), 200
-        
-        # Convert to list and sort by date
         feedback_list = []
-        for feedback_id, feedback in feedback_data.items():
-            if isinstance(feedback, dict):
-                feedback['id'] = feedback_id
-                feedback_list.append(feedback)
+        for doc in feedback_docs:
+            feedback = doc.to_dict()
+            feedback['id'] = doc.id
+            feedback_list.append(feedback)
+        
+        if not feedback_list:
+            return jsonify([]), 200
         
         # Sort by submitted_date (most recent first)
         feedback_list.sort(key=lambda x: x.get('submitted_date', ''), reverse=True)
@@ -115,18 +116,22 @@ def get_my_feedback():
     try:
         user_id = session.get('user_id')
         
-        # Get all feedback from Firebase
-        feedback_ref = db.reference('feedback')
-        feedback_data = feedback_ref.get()
+        # Get all feedback from Firestore
+        db = get_db()
+        feedback_ref = db.collection('feedback')
         
-        if not feedback_data:
-            return jsonify([]), 200
+        # Filter by user_id if available
+        if user_id:
+            feedback_docs = feedback_ref.where('user_id', '==', user_id).stream()
+        else:
+            # Fallback to getting all and filtering
+            feedback_docs = feedback_ref.stream()
         
-        # Filter feedback by user_id
         my_feedback = []
-        for feedback_id, feedback in feedback_data.items():
-            if isinstance(feedback, dict) and feedback.get('user_id') == user_id:
-                feedback['id'] = feedback_id
+        for doc in feedback_docs:
+            feedback = doc.to_dict()
+            feedback['id'] = doc.id
+            if not user_id or feedback.get('user_id') == user_id:
                 my_feedback.append(feedback)
         
         # Sort by submitted_date (most recent first)
@@ -165,8 +170,9 @@ def reply_to_feedback():
                 'message': 'Feedback ID and reply message are required'
             }), 400
         
-        # Update feedback with reply
-        feedback_ref = db.reference(f'feedback/{feedback_id}')
+        # Update feedback with reply in Firestore
+        db = get_db()
+        feedback_ref = db.collection('feedback').document(feedback_id)
         feedback_ref.update({
             'reply': reply_message,
             'replied_by': session.get('user_name'),
@@ -202,19 +208,19 @@ def filter_feedback():
         
         filter_type = request.args.get('type', 'all')
         
-        # Get feedback from Firebase
-        feedback_ref = db.reference('feedback')
-        feedback_data = feedback_ref.get()
+        # Get feedback from Firestore
+        db = get_db()
+        feedback_ref = db.collection('feedback')
+        feedback_docs = feedback_ref.stream()
         
-        if not feedback_data:
-            return jsonify([]), 200
-        
-        # Convert to list
         feedback_list = []
-        for feedback_id, feedback in feedback_data.items():
-            if isinstance(feedback, dict):
-                feedback['id'] = feedback_id
-                feedback_list.append(feedback)
+        for doc in feedback_docs:
+            feedback = doc.to_dict()
+            feedback['id'] = doc.id
+            feedback_list.append(feedback)
+        
+        if not feedback_list:
+            return jsonify([]), 200
         
         # Filter based on rating
         if filter_type == 'positive':

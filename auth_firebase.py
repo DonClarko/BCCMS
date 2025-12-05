@@ -3,8 +3,8 @@ import json
 import os
 from datetime import datetime
 from functools import wraps
-from firebase_admin import auth as firebase_auth, db, exceptions
-from firebase_config import initialize_firebase, get_users_db
+from firebase_admin import auth as firebase_auth, firestore, exceptions
+from firebase_config import initialize_firebase, get_db
 
 initialize_firebase()
 
@@ -29,8 +29,9 @@ def create_default_admin():
             )
             print(f"Admin user created: {user.uid}")
         
-        # Store/update admin user data in Realtime Database
-        admin_ref = db.reference(f'users/{user.uid}')
+        # Store/update admin user data in Firestore
+        db = get_db()
+        admin_ref = db.collection('users').document(user.uid)
         admin_data = {
             'full_name': 'Barangay Admin',
             'email': admin_email,
@@ -68,10 +69,16 @@ def role_required(role):
             user_uid = session.get('user_uid')
             
             if user_uid:
-                user_ref = db.reference(f'users/{user_uid}')
-                user = user_ref.get()
+                db = get_db()
+                user_ref = db.collection('users').document(user_uid)
+                user_doc = user_ref.get()
                 
-                if not user or user.get('role') != role:
+                if not user_doc.exists:
+                    flash(f'Access denied. This page is only for {role}s', 'error')
+                    return redirect(url_for('home'))
+                
+                user = user_doc.to_dict()
+                if user.get('role') != role:
                     flash(f'Access denied. This page is only for {role}s', 'error')
                     return redirect(url_for('home'))
             
@@ -97,13 +104,16 @@ def login():
         # Authenticate with Firebase
         user = firebase_auth.get_user_by_email(email)
         
-        # Get user data from Realtime Database using direct reference
-        users_ref = db.reference(f'users/{user.uid}')
-        user_info = users_ref.get()
+        # Get user data from Firestore
+        db = get_db()
+        user_ref = db.collection('users').document(user.uid)
+        user_doc = user_ref.get()
         
-        if not user_info:
+        if not user_doc.exists:
             flash('User profile not found', 'error')
             return redirect(url_for('auth.show_auth', form_type='login'))
+        
+        user_info = user_doc.to_dict()
         
         # Check if official account is pending approval
         if user_info.get('role') == 'official' and user_info.get('status') == 'pending_approval':
@@ -176,8 +186,9 @@ def signup():
             display_name=full_name
         )
         
-        # Store additional user data in Realtime Database
-        user_ref = db.reference(f'users/{user.uid}')
+        # Store additional user data in Firestore
+        db = get_db()
+        user_ref = db.collection('users').document(user.uid)
         user_data = {
             'full_name': full_name,
             'email': email,

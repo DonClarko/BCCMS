@@ -5,8 +5,8 @@ import os
 from datetime import datetime
 from functools import wraps
 from auth_firebase import login_required, role_required
-from firebase_admin import db
-from firebase_config import initialize_firebase, get_complaints_db, get_users_db
+from firebase_admin import firestore
+from firebase_config import initialize_firebase, get_db
 import uuid
 
 initialize_firebase()
@@ -36,7 +36,7 @@ def estimate_resolution(urgency):
 def add_official_notification(complaint_id, title, message):
     """Add notification for officials about a complaint"""
     try:
-        notifications_ref = db.reference('notifications')
+        db = get_db()
         notification = {
             'complaint_id': complaint_id,
             'title': title,
@@ -44,8 +44,7 @@ def add_official_notification(complaint_id, title, message):
             'created_at': datetime.now().isoformat(),
             'read': False
         }
-        # Push creates a new child location with an auto-generated key
-        notifications_ref.push(notification)
+        db.collection('notifications').add(notification)
     except Exception as e:
         print(f"Error adding notification: {str(e)}")
 
@@ -56,8 +55,13 @@ def complaint_stream():
         last_data = None
         while True:
             try:
-                complaints_ref = db.reference('complaints')
-                complaints = complaints_ref.get()
+                db = get_db()
+                complaints_ref = db.collection('complaints')
+                complaints_docs = complaints_ref.stream()
+                
+                complaints = {}
+                for doc in complaints_docs:
+                    complaints[doc.id] = doc.to_dict()
                 
                 if complaints != last_data:
                     last_data = complaints
@@ -73,7 +77,7 @@ def complaint_stream():
 @complaint_bp.route('/complaint/submit', methods=['POST'])
 @login_required
 def submit_complaint():
-    """Submit a new complaint to Firebase"""
+    """Submit a new complaint to Firebase Firestore"""
     try:
         user_email = session.get('user_email')
         user_uid = session.get('user_uid')
@@ -148,9 +152,9 @@ def submit_complaint():
             if images:
                 new_complaint['attachments'] = images
         
-        # Save to Firebase
-        complaints_ref = db.reference(f'complaints/{complaint_id}')
-        complaints_ref.set(new_complaint)
+        # Save to Firestore
+        db = get_db()
+        db.collection('complaints').document(complaint_id).set(new_complaint)
         
         # Add notification for officials
         add_official_notification(
@@ -181,26 +185,25 @@ def get_recent_complaints():
         if not user_email:
             return jsonify([])
         
-        complaints_ref = db.reference('complaints')
-        complaints_data = complaints_ref.get()
-        
-        if not complaints_data:
-            return jsonify([])
-        
-        # Convert to list
-        complaints = list(complaints_data.values()) if isinstance(complaints_data, dict) else complaints_data
+        db = get_db()
+        complaints_ref = db.collection('complaints')
         
         # Filter based on role
         if user_role == 'official':
             # Officials see all complaints
-            user_complaints = complaints
+            complaints_docs = complaints_ref.stream()
         else:
             # Residents see only their own
-            user_complaints = [c for c in complaints if c.get('user_uid') == user_uid]
+            complaints_docs = complaints_ref.where('user_uid', '==', user_uid).stream()
+        
+        complaints = []
+        for doc in complaints_docs:
+            complaint = doc.to_dict()
+            complaints.append(complaint)
         
         # Sort and limit
         recent_complaints = sorted(
-            user_complaints,
+            complaints,
             key=lambda x: x.get('submitted_date', ''),
             reverse=True
         )[:5]
@@ -223,24 +226,23 @@ def get_all_complaints():
         if not user_email:
             return jsonify([])
         
-        complaints_ref = db.reference('complaints')
-        complaints_data = complaints_ref.get()
-        
-        if not complaints_data:
-            return jsonify([])
-        
-        # Convert to list
-        complaints = list(complaints_data.values()) if isinstance(complaints_data, dict) else complaints_data
+        db = get_db()
+        complaints_ref = db.collection('complaints')
         
         # Filter based on role
         if user_role == 'official':
-            user_complaints = complaints
+            complaints_docs = complaints_ref.stream()
         else:
-            user_complaints = [c for c in complaints if c.get('user_uid') == user_uid]
+            complaints_docs = complaints_ref.where('user_uid', '==', user_uid).stream()
+        
+        complaints = []
+        for doc in complaints_docs:
+            complaint = doc.to_dict()
+            complaints.append(complaint)
         
         # Sort
         sorted_complaints = sorted(
-            user_complaints,
+            complaints,
             key=lambda x: x.get('submitted_date', ''),
             reverse=True
         )
@@ -264,11 +266,14 @@ def get_complaint_details():
         if not complaint_id:
             return jsonify({'error': 'Invalid request'}), 400
         
-        complaints_ref = db.reference(f'complaints/{complaint_id}')
-        complaint = complaints_ref.get()
+        db = get_db()
+        complaint_ref = db.collection('complaints').document(complaint_id)
+        complaint_doc = complaint_ref.get()
         
-        if not complaint:
+        if not complaint_doc.exists:
             return jsonify({'error': 'Complaint not found'}), 404
+        
+        complaint = complaint_doc.to_dict()
         
         # Security check
         if user_role == 'official':
@@ -288,10 +293,13 @@ def get_complaint_details():
 def get_officials_stats():
     """Get dashboard statistics for officials"""
     try:
-        complaints_ref = db.reference('complaints')
-        complaints_data = complaints_ref.get()
+        db = get_db()
+        complaints_ref = db.collection('complaints')
+        complaints_docs = complaints_ref.stream()
         
-        if not complaints_data:
+        complaints_list = [doc.to_dict() for doc in complaints_docs]
+        
+        if not complaints_list:
             return jsonify({
                 'total': 0,
                 'pending': 0,
@@ -307,8 +315,6 @@ def get_officials_stats():
                     'resolution_time': 0
                 }
             })
-        
-        complaints_list = list(complaints_data.values())
         
         # Count by status
         total = len(complaints_list)
@@ -377,7 +383,7 @@ def get_officials_stats():
             'change_from_last_month': {
                 'total': total_change,
                 'resolved': resolved_change,
-                'resolution_time': 0.5  # Placeholder for resolution time improvement
+                'resolution_time': 0.5
             }
         })
         
@@ -392,15 +398,12 @@ def get_officials_stats():
 def get_complaints_by_status(status):
     """Get complaints filtered by status for officials"""
     try:
-        complaints_ref = db.reference('complaints')
-        complaints_data = complaints_ref.get()
-        
-        if not complaints_data:
-            return jsonify([])
+        db = get_db()
+        complaints_ref = db.collection('complaints')
         
         # Handle 'all' case
         if status.lower() == 'all':
-            complaints_list = list(complaints_data.values())
+            complaints_docs = complaints_ref.stream()
         else:
             # Map URL parameter to actual status values
             status_map = {
@@ -413,7 +416,9 @@ def get_complaints_by_status(status):
             }
             
             target_status = status_map.get(status.lower(), status)
-            complaints_list = [c for c in complaints_data.values() if c.get('status') == target_status]
+            complaints_docs = complaints_ref.where('status', '==', target_status).stream()
+        
+        complaints_list = [doc.to_dict() for doc in complaints_docs]
         
         # Sort by date (newest first)
         complaints_list = sorted(
@@ -442,34 +447,38 @@ def update_complaint():
         status = request.json.get('status')
         notes = request.json.get('notes', '')
         
-        complaints_ref = db.reference(f'complaints/{complaint_id}')
-        complaint = complaints_ref.get()
+        db = get_db()
+        complaint_ref = db.collection('complaints').document(complaint_id)
+        complaint_doc = complaint_ref.get()
         
-        if not complaint:
+        if not complaint_doc.exists:
             return jsonify({'success': False, 'message': 'Complaint not found'}), 404
+        
+        complaint = complaint_doc.to_dict()
         
         # Get old status for comparison
         old_status = complaint.get('status', 'New')
         
         # Update complaint
-        complaint['status'] = status
-        complaint['updated_at'] = datetime.now().isoformat()
-        complaint['updated_by'] = session.get('user_uid')
+        update_data = {
+            'status': status,
+            'updated_at': datetime.now().isoformat(),
+            'updated_by': session.get('user_uid')
+        }
         if notes:
-            complaint['status_notes'] = notes
+            update_data['status_notes'] = notes
         
-        complaints_ref.set(complaint)
+        complaint_ref.update(update_data)
         
         # Send notification to the resident who filed the complaint
         resident_uid = complaint.get('user_uid')
         if resident_uid:
-            users_ref = db.reference('users')
-            users = users_ref.get() or {}
+            user_ref = db.collection('users').document(resident_uid)
+            user_doc = user_ref.get()
             
-            # Find resident by UID
-            resident_data = users.get(resident_uid)
-            
-            if resident_data:
+            if user_doc.exists:
+                resident_data = user_doc.to_dict()
+                
                 # Create notification
                 notification = {
                     'id': str(uuid.uuid4())[:8],
@@ -481,10 +490,9 @@ def update_complaint():
                 }
                 
                 # Add notification to resident's notifications
-                resident_ref = db.reference(f'users/{resident_uid}')
                 resident_notifications = resident_data.get('notifications', [])
                 resident_notifications.append(notification)
-                resident_ref.child('notifications').set(resident_notifications)
+                user_ref.update({'notifications': resident_notifications})
                 
                 print(f'Notification sent to resident {resident_uid} for complaint {complaint_id}')
         
@@ -500,18 +508,19 @@ def update_complaint():
 @login_required
 def get_officials_list():
     try:
-        # Allow both residents and admins to message officials
-        users_ref = db.reference('users')
-        users = users_ref.get() or {}
+        db = get_db()
+        users_ref = db.collection('users')
+        users_docs = users_ref.where('role', '==', 'official').stream()
+        
         officials = []
-        for uid, user in users.items():
-            # Only include users with official role
-            if user.get('role') == 'official':
-                officials.append({
-                    'email': user.get('email', ''),
-                    'name': user.get('full_name', user.get('email', '')),
-                    'role': 'official'
-                })
+        for doc in users_docs:
+            user = doc.to_dict()
+            officials.append({
+                'email': user.get('email', ''),
+                'name': user.get('full_name', user.get('email', '')),
+                'role': 'official'
+            })
+        
         print(f'Found {len(officials)} officials for messaging')
         return jsonify(officials)
     except Exception as e:
@@ -524,24 +533,25 @@ def get_officials_list():
 @login_required
 def get_residents_list():
     try:
-        # Allow both officials and admins to access this endpoint
-        user_role = session.get('user_role')  # Fixed: changed from 'role' to 'user_role'
+        user_role = session.get('user_role')
         is_admin = session.get('is_admin', False)
         
         if user_role not in ['official', 'admin'] and not is_admin:
             return jsonify({'error': 'Unauthorized'}), 403
-            
-        users_ref = db.reference('users')
-        users = users_ref.get() or {}
+        
+        db = get_db()
+        users_ref = db.collection('users')
+        users_docs = users_ref.where('role', '==', 'resident').stream()
+        
         residents = []
-        for uid, user in users.items():
-            # Only include users with resident role (not officials, not admins)
-            if user.get('role') == 'resident':
-                residents.append({
-                    'email': user.get('email', ''),
-                    'name': user.get('full_name', user.get('email', '')),
-                    'role': 'resident'
-                })
+        for doc in users_docs:
+            user = doc.to_dict()
+            residents.append({
+                'email': user.get('email', ''),
+                'name': user.get('full_name', user.get('email', '')),
+                'role': 'resident'
+            })
+        
         print(f'Found {len(residents)} residents for messaging')
         return jsonify(residents)
     except Exception as e:
@@ -556,8 +566,15 @@ def get_messages():
     user_uid = session.get('user_uid')
     if not user_uid:
         return jsonify([]), 401
-    user_ref = db.reference(f'users/{user_uid}')
-    user = user_ref.get() or {}
+    
+    db = get_db()
+    user_ref = db.collection('users').document(user_uid)
+    user_doc = user_ref.get()
+    
+    if not user_doc.exists:
+        return jsonify([])
+    
+    user = user_doc.to_dict()
     messages = user.get('messages', [])
     # return newest first
     sorted_msgs = sorted(messages, key=lambda m: m.get('timestamp', ''), reverse=True)
@@ -578,29 +595,26 @@ def send_message():
         if not to_email or not content:
             return jsonify({'success': False, 'error': 'Missing recipient or content'}), 400
 
-        # Find recipient by email
-        users_ref = db.reference('users')
-        users = users_ref.get() or {}
+        db = get_db()
+        users_ref = db.collection('users')
         
+        # Find recipient by email
+        recipient_docs = users_ref.where('email', '==', to_email).limit(1).stream()
         recipient_uid = None
         recipient_data = None
-        sender_uid = session.get('user_uid')
-        sender_data = None
         
-        for uid, user in users.items():
-            if user.get('email') == to_email:
-                recipient_uid = uid
-                recipient_data = user
-            if uid == sender_uid:
-                sender_data = user
+        for doc in recipient_docs:
+            recipient_uid = doc.id
+            recipient_data = doc.to_dict()
+            break
         
         if not recipient_uid or not recipient_data:
             return jsonify({'success': False, 'error': 'Recipient not found'}), 404
         
-        # If sender_data not found, get it directly
-        if not sender_data:
-            sender_ref = db.reference(f'users/{sender_uid}')
-            sender_data = sender_ref.get() or {}
+        sender_uid = session.get('user_uid')
+        sender_ref = db.collection('users').document(sender_uid)
+        sender_doc = sender_ref.get()
+        sender_data = sender_doc.to_dict() if sender_doc.exists else {}
 
         msg = {
             'id': str(uuid.uuid4())[:8],
@@ -616,18 +630,17 @@ def send_message():
         }
 
         # Save message in recipient's inbox
-        recipient_ref = db.reference(f'users/{recipient_uid}')
+        recipient_ref = db.collection('users').document(recipient_uid)
         recipient_messages = recipient_data.get('messages', [])
         recipient_messages.append(msg)
-        recipient_ref.child('messages').set(recipient_messages)
+        recipient_ref.update({'messages': recipient_messages})
         
         # Also save message in sender's sent folder (create a copy marked as sent)
         sent_msg = msg.copy()
         sent_msg['isSent'] = True
-        sender_ref = db.reference(f'users/{sender_uid}')
         sender_messages = sender_data.get('messages', [])
         sender_messages.append(sent_msg)
-        sender_ref.child('messages').set(sender_messages)
+        sender_ref.update({'messages': sender_messages})
 
         # Optionally add a notification for the recipient
         recipient_notifications = recipient_data.get('notifications', [])
@@ -638,7 +651,7 @@ def send_message():
             'message': content[:140],
             'read': False
         })
-        recipient_ref.child('notifications').set(recipient_notifications)
+        recipient_ref.update({'notifications': recipient_notifications})
 
         return jsonify({'success': True})
     except Exception as e:
@@ -653,9 +666,14 @@ def get_notifications():
     if not user_uid:
         return jsonify([]), 401
 
-    # Get user notifications from Firebase
-    user_ref = db.reference(f'users/{user_uid}')
-    user = user_ref.get() or {}
+    db = get_db()
+    user_ref = db.collection('users').document(user_uid)
+    user_doc = user_ref.get()
+    
+    if not user_doc.exists:
+        return jsonify([])
+    
+    user = user_doc.to_dict()
     user_notes = user.get('notifications', [])
 
     # Sort by timestamp
@@ -672,18 +690,26 @@ def mark_notification_read():
         return jsonify({'success': False, 'error': 'Missing id'}), 400
 
     user_uid = session.get('user_uid')
-    user_ref = db.reference(f'users/{user_uid}')
-    user = user_ref.get() or {}
+    db = get_db()
+    user_ref = db.collection('users').document(user_uid)
+    user_doc = user_ref.get()
+    
+    if not user_doc.exists:
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+    
+    user = user_doc.to_dict()
     updated = False
-    if user and user.get('notifications'):
+    
+    if user.get('notifications'):
         notifications = user['notifications']
         for n in notifications:
             if n.get('id') == note_id:
                 n['read'] = True
                 updated = True
                 break
+    
     if updated:
-        user_ref.child('notifications').set(user['notifications'])
+        user_ref.update({'notifications': notifications})
         return jsonify({'success': True})
     
     return jsonify({'success': False, 'error': 'Notification not found'}), 404
@@ -698,16 +724,11 @@ def get_resident_stats():
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
-        # Get complaints from Firebase
-        complaints_ref = db.reference('complaints')
-        complaints_data = complaints_ref.get() or {}
+        db = get_db()
+        complaints_ref = db.collection('complaints')
+        complaints_docs = complaints_ref.where('user_email', '==', user_email).stream()
         
-        # Filter user's complaints
-        user_complaints = []
-        for complaint_id, complaint in complaints_data.items():
-            if complaint.get('user_email') == user_email:
-                complaint['id'] = complaint_id
-                user_complaints.append(complaint)
+        user_complaints = [doc.to_dict() for doc in complaints_docs]
         
         stats = {
             'open_cases': 0,
@@ -767,4 +788,3 @@ def get_resident_stats():
             'resolved': 0,
             'avg_resolution': 0
         })
-

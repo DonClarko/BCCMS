@@ -2,8 +2,8 @@ from flask import Blueprint, request, jsonify, session
 from datetime import datetime, timedelta
 from functools import wraps
 from auth_firebase import login_required
-from firebase_admin import db, auth as firebase_auth
-from firebase_config import initialize_firebase
+from firebase_admin import firestore, auth as firebase_auth
+from firebase_config import initialize_firebase, get_db
 import uuid
 
 initialize_firebase()
@@ -25,21 +25,26 @@ def admin_required(f):
 def get_admin_stats():
     """Get dashboard statistics for admin"""
     try:
-        users_ref = db.reference('users')
-        users_data = users_ref.get() or {}
+        db = get_db()
         
-        complaints_ref = db.reference('complaints')
-        complaints_data = complaints_ref.get() or {}
+        # Get users
+        users_ref = db.collection('users')
+        users_docs = users_ref.stream()
+        users_list = [doc.to_dict() for doc in users_docs]
+        
+        # Get complaints
+        complaints_ref = db.collection('complaints')
+        complaints_docs = complaints_ref.stream()
+        complaints_list = [doc.to_dict() for doc in complaints_docs]
         
         # Count users by role
-        residents_count = sum(1 for u in users_data.values() if u.get('role') == 'resident')
-        officials_count = sum(1 for u in users_data.values() if u.get('role') == 'official')
+        residents_count = sum(1 for u in users_list if u.get('role') == 'resident')
+        officials_count = sum(1 for u in users_list if u.get('role') == 'official')
         
         # Count complaints by status
-        complaints_list = list(complaints_data.values()) if complaints_data else []
         pending_count = sum(1 for c in complaints_list if c.get('status') in ['New', 'Pending', 'Pending Review', 'In Progress'])
         
-        # For demo purposes - upcoming events (you can integrate real events later)
+        # For demo purposes - upcoming events
         events_count = 8
         
         return jsonify({
@@ -59,13 +64,15 @@ def get_recent_activity():
     """Get recent activity for admin dashboard"""
     try:
         activities = []
+        db = get_db()
         
         # Get recent users (last 10)
-        users_ref = db.reference('users')
-        users_data = users_ref.get() or {}
+        users_ref = db.collection('users')
+        users_docs = users_ref.stream()
         users_list = []
-        for uid, user in users_data.items():
-            user['uid'] = uid
+        for doc in users_docs:
+            user = doc.to_dict()
+            user['uid'] = doc.id
             users_list.append(user)
         
         # Sort by created_at
@@ -98,11 +105,9 @@ def get_recent_activity():
                     pass
         
         # Get recent complaints
-        complaints_ref = db.reference('complaints')
-        complaints_data = complaints_ref.get() or {}
-        complaints_list = []
-        for complaint in complaints_data.values():
-            complaints_list.append(complaint)
+        complaints_ref = db.collection('complaints')
+        complaints_docs = complaints_ref.stream()
+        complaints_list = [doc.to_dict() for doc in complaints_docs]
         
         complaints_list.sort(key=lambda x: x.get('submitted_date', ''), reverse=True)
         
@@ -153,16 +158,23 @@ def get_recent_activity():
 def get_admin_complaints():
     """Get all complaints for admin dashboard"""
     try:
-        complaints_ref = db.reference('complaints')
-        complaints_data = complaints_ref.get() or {}
+        db = get_db()
+        complaints_ref = db.collection('complaints')
+        complaints_docs = complaints_ref.stream()
+        
+        complaints_data = {}
+        for doc in complaints_docs:
+            complaints_data[doc.id] = doc.to_dict()
         
         if not complaints_data:
             return jsonify([])
         
-        complaints_list = []
-        users_ref = db.reference('users')
-        users_data = users_ref.get() or {}
+        # Get users for name lookup
+        users_ref = db.collection('users')
+        users_docs = users_ref.stream()
+        users_data = {doc.id: doc.to_dict() for doc in users_docs}
         
+        complaints_list = []
         for complaint_id, complaint in complaints_data.items():
             # Get resident name and email
             user_uid = complaint.get('user_uid')
@@ -196,14 +208,15 @@ def get_admin_complaints():
 def get_admin_users():
     """Get all users for admin dashboard (excludes admin users and pending/rejected)"""
     try:
-        users_ref = db.reference('users')
-        users_data = users_ref.get() or {}
-        
-        if not users_data:
-            return jsonify([])
+        db = get_db()
+        users_ref = db.collection('users')
+        users_docs = users_ref.stream()
         
         users_list = []
-        for uid, user in users_data.items():
+        for doc in users_docs:
+            user = doc.to_dict()
+            uid = doc.id
+            
             # Skip admin users - they should not appear in user management
             if user.get('is_admin', False):
                 continue
@@ -236,10 +249,12 @@ def get_admin_users():
 def get_complaint_analytics():
     """Get complaint analytics for admin"""
     try:
-        complaints_ref = db.reference('complaints')
-        complaints_data = complaints_ref.get() or {}
+        db = get_db()
+        complaints_ref = db.collection('complaints')
+        complaints_docs = complaints_ref.stream()
+        complaints_list = [doc.to_dict() for doc in complaints_docs]
         
-        if not complaints_data:
+        if not complaints_list:
             return jsonify({
                 'total': 0,
                 'resolved': 0,
@@ -254,7 +269,6 @@ def get_complaint_analytics():
                 'sla_compliance': 0
             })
         
-        complaints_list = list(complaints_data.values())
         total = len(complaints_list)
         
         # Count by status
@@ -314,11 +328,14 @@ def get_complaint_analytics():
 def get_user_details(uid):
     """Get user details for viewing"""
     try:
-        user_ref = db.reference(f'users/{uid}')
-        user_data = user_ref.get()
+        db = get_db()
+        user_ref = db.collection('users').document(uid)
+        user_doc = user_ref.get()
         
-        if not user_data:
+        if not user_doc.exists:
             return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        user_data = user_doc.to_dict()
         
         # Return user details (excluding sensitive data like password)
         return jsonify({
@@ -359,8 +376,9 @@ def delete_user():
         # Delete from Firebase Auth
         firebase_auth.delete_user(user_uid)
         
-        # Delete from Realtime Database
-        user_ref = db.reference(f'users/{user_uid}')
+        # Delete from Firestore
+        db = get_db()
+        user_ref = db.collection('users').document(user_uid)
         user_ref.delete()
         
         return jsonify({'success': True, 'message': 'User deleted successfully'})
@@ -381,23 +399,24 @@ def delete_complaint():
         if not complaint_id:
             return jsonify({'success': False, 'message': 'Complaint ID required'}), 400
         
-        # Find and delete from Realtime Database
-        complaints_ref = db.reference('complaints')
-        complaints_data = complaints_ref.get() or {}
+        db = get_db()
         
-        # Find the complaint key
-        complaint_key = None
-        for key, complaint in complaints_data.items():
-            if complaint.get('id') == complaint_id:
-                complaint_key = key
-                break
+        # Try to delete by document ID (which is the complaint_id)
+        complaint_ref = db.collection('complaints').document(complaint_id)
+        complaint_doc = complaint_ref.get()
         
-        if complaint_key:
-            complaint_ref = db.reference(f'complaints/{complaint_key}')
+        if complaint_doc.exists:
             complaint_ref.delete()
             return jsonify({'success': True, 'message': 'Complaint deleted successfully'})
-        else:
-            return jsonify({'success': False, 'message': 'Complaint not found'}), 404
+        
+        # If not found by ID, search by 'id' field
+        complaints_query = db.collection('complaints').where('id', '==', complaint_id).limit(1).stream()
+        
+        for doc in complaints_query:
+            db.collection('complaints').document(doc.id).delete()
+            return jsonify({'success': True, 'message': 'Complaint deleted successfully'})
+        
+        return jsonify({'success': False, 'message': 'Complaint not found'}), 404
         
     except Exception as e:
         print(f"Error deleting complaint: {str(e)}")
@@ -409,17 +428,18 @@ def delete_complaint():
 def get_residents_list():
     """Get list of all residents for messaging"""
     try:
-        users_ref = db.reference('users')
-        users_data = users_ref.get() or {}
+        db = get_db()
+        users_ref = db.collection('users')
+        users_docs = users_ref.where('role', '==', 'resident').stream()
         
         residents_list = []
-        for uid, user in users_data.items():
-            if user.get('role') == 'resident':
-                residents_list.append({
-                    'uid': uid,
-                    'name': user.get('full_name', 'Unknown'),
-                    'email': user.get('email', '')
-                })
+        for doc in users_docs:
+            user = doc.to_dict()
+            residents_list.append({
+                'uid': doc.id,
+                'name': user.get('full_name', 'Unknown'),
+                'email': user.get('email', '')
+            })
         
         # Sort by name
         residents_list.sort(key=lambda x: x.get('name', ''))
@@ -436,13 +456,14 @@ def get_residents_list():
 def get_notifications_list():
     """Get notifications for admin"""
     try:
-        # Get notifications from database
-        notifications_ref = db.reference('notifications')
-        notifications_data = notifications_ref.get() or {}
+        db = get_db()
+        notifications_ref = db.collection('notifications')
+        notifications_docs = notifications_ref.stream()
         
         notifications_list = []
-        for notif_id, notification in notifications_data.items():
-            notification['id'] = notif_id
+        for doc in notifications_docs:
+            notification = doc.to_dict()
+            notification['id'] = doc.id
             notifications_list.append(notification)
         
         # Sort by timestamp (newest first)
@@ -466,8 +487,8 @@ def mark_notification_read():
         if not notification_id:
             return jsonify({'success': False, 'message': 'Notification ID required'}), 400
         
-        # Update notification
-        notification_ref = db.reference(f'notifications/{notification_id}')
+        db = get_db()
+        notification_ref = db.collection('notifications').document(notification_id)
         notification_ref.update({'read': True})
         
         return jsonify({'success': True, 'message': 'Notification marked as read'})
@@ -482,13 +503,13 @@ def mark_notification_read():
 def mark_all_notifications_read():
     """Mark all notifications as read"""
     try:
-        notifications_ref = db.reference('notifications')
-        notifications_data = notifications_ref.get() or {}
+        db = get_db()
+        notifications_ref = db.collection('notifications')
+        notifications_docs = notifications_ref.stream()
         
         # Update all notifications
-        for notif_id in notifications_data.keys():
-            notification_ref = db.reference(f'notifications/{notif_id}')
-            notification_ref.update({'read': True})
+        for doc in notifications_docs:
+            db.collection('notifications').document(doc.id).update({'read': True})
         
         return jsonify({'success': True, 'message': 'All notifications marked as read'})
         
@@ -504,20 +525,21 @@ def mark_all_notifications_read():
 def get_pending_registrations():
     """Get all pending official registrations for admin approval"""
     try:
-        users_ref = db.reference('users')
-        users_data = users_ref.get() or {}
+        db = get_db()
+        users_ref = db.collection('users')
+        # Query for officials with pending_approval status
+        users_docs = users_ref.where('role', '==', 'official').where('status', '==', 'pending_approval').stream()
         
         pending_list = []
-        for uid, user in users_data.items():
-            # Only get officials with pending_approval status
-            if user.get('role') == 'official' and user.get('status') == 'pending_approval':
-                pending_list.append({
-                    'uid': uid,
-                    'name': user.get('full_name', 'Unknown'),
-                    'email': user.get('email', ''),
-                    'phone': user.get('phone', ''),
-                    'created_at': user.get('created_at', '')
-                })
+        for doc in users_docs:
+            user = doc.to_dict()
+            pending_list.append({
+                'uid': doc.id,
+                'name': user.get('full_name', 'Unknown'),
+                'email': user.get('email', ''),
+                'phone': user.get('phone', ''),
+                'created_at': user.get('created_at', '')
+            })
         
         # Sort by created_at (newest first)
         pending_list.sort(key=lambda x: x.get('created_at', ''), reverse=True)
@@ -534,11 +556,14 @@ def get_pending_registrations():
 def approve_registration(uid):
     """Approve a pending official registration"""
     try:
-        user_ref = db.reference(f'users/{uid}')
-        user_data = user_ref.get()
+        db = get_db()
+        user_ref = db.collection('users').document(uid)
+        user_doc = user_ref.get()
         
-        if not user_data:
+        if not user_doc.exists:
             return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        user_data = user_doc.to_dict()
         
         if user_data.get('status') != 'pending_approval':
             return jsonify({'success': False, 'message': 'User is not pending approval'}), 400
@@ -565,11 +590,14 @@ def approve_registration(uid):
 def reject_registration(uid):
     """Reject a pending official registration"""
     try:
-        user_ref = db.reference(f'users/{uid}')
-        user_data = user_ref.get()
+        db = get_db()
+        user_ref = db.collection('users').document(uid)
+        user_doc = user_ref.get()
         
-        if not user_data:
+        if not user_doc.exists:
             return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        user_data = user_doc.to_dict()
         
         if user_data.get('status') != 'pending_approval':
             return jsonify({'success': False, 'message': 'User is not pending approval'}), 400
@@ -596,11 +624,11 @@ def reject_registration(uid):
 def get_pending_count():
     """Get count of pending registrations"""
     try:
-        users_ref = db.reference('users')
-        users_data = users_ref.get() or {}
+        db = get_db()
+        users_ref = db.collection('users')
+        users_docs = users_ref.where('role', '==', 'official').where('status', '==', 'pending_approval').stream()
         
-        pending_count = sum(1 for u in users_data.values() 
-                          if u.get('role') == 'official' and u.get('status') == 'pending_approval')
+        pending_count = sum(1 for _ in users_docs)
         
         return jsonify({'count': pending_count})
         
@@ -621,12 +649,14 @@ def toggle_block_user():
         if not uid or action not in ['block', 'unblock']:
             return jsonify({'success': False, 'message': 'Invalid request'}), 400
         
-        # Get user reference
-        user_ref = db.reference(f'users/{uid}')
-        user_data = user_ref.get()
+        db = get_db()
+        user_ref = db.collection('users').document(uid)
+        user_doc = user_ref.get()
         
-        if not user_data:
+        if not user_doc.exists:
             return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        user_data = user_doc.to_dict()
         
         # Don't allow blocking admins
         if user_data.get('is_admin', False):
