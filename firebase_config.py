@@ -30,19 +30,29 @@ def initialize_firebase():
                 cred_dict = json.loads(firebase_creds_json)
                 cred = credentials.Certificate(cred_dict)
                 print("Using Firebase credentials from environment variable")
-            except json.JSONDecodeError:
-                print("Invalid JSON in GOOGLE_APPLICATION_CREDENTIALS_JSON")
+            except json.JSONDecodeError as e:
+                print(f"Invalid JSON in GOOGLE_APPLICATION_CREDENTIALS_JSON: {e}")
+                cred = None
+            except Exception as e:
+                print(f"Error loading credentials from env: {e}")
+                cred = None
         
         # Option 2: Use local file (for local development)
         if cred is None:
-            if not os.path.exists(FIREBASE_CREDENTIALS_PATH):
+            if os.path.exists(FIREBASE_CREDENTIALS_PATH):
+                try:
+                    cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+                    print("Using Firebase credentials from local file")
+                except Exception as e:
+                    print(f"Error loading credentials from file: {e}")
+                    raise
+            else:
+                # In serverless environment, file won't exist - that's okay if env var is set
                 raise FileNotFoundError(
-                    f"Firebase credentials file not found at {FIREBASE_CREDENTIALS_PATH}. "
-                    "Please download your service account key from Firebase Console and save it as firebase-key.json "
-                    "OR set the GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable."
+                    f"Firebase credentials not found. "
+                    "Please set GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable "
+                    "or provide firebase-key.json file."
                 )
-            cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
-            print("Using Firebase credentials from local file")
         
         # Initialize Firebase Admin SDK (no databaseURL needed for Firestore)
         firebase_admin.initialize_app(cred)
