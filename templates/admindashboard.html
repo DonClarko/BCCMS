@@ -25,7 +25,7 @@
                     <li><a href="#complaints"><i class="fas fa-exclamation-circle"></i> Complaints</a></li>
                     <li><a href="#messages"><i class="fas fa-envelope"></i> Messages <span class="notification-badge" id="messages-badge" style="display: none;">0</span></a></li>
                     <li><a href="#notifications"><i class="fas fa-bell"></i> Notifications <span class="notification-badge" id="notifications-badge" style="display: none;">0</span></a></li>
-                    <li><a href="#settings"><i class="fas fa-cog"></i> Settings</a></li>
+                    <li><a href="#feedback"><i class="fas fa-comment-alt"></i> Feedback</a></li>
                     <li><a href="{{ url_for('auth.show_auth', form_type='login') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </nav>
@@ -318,7 +318,29 @@
         </div>
     </div>
 
+    <!-- Feedback Modal -->
+    <div id="feedback-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close-btn" onclick="closeModal('feedback-modal')">&times;</span>
+            <h2><i class="fas fa-comment-alt"></i> Resident Feedback</h2>
+            <div class="feedback-filter" style="margin-bottom: 15px;">
+                <select id="feedback-filter" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="all">All Feedback</option>
+                    <option value="positive">Positive (4-5 stars)</option>
+                    <option value="neutral">Neutral (3 stars)</option>
+                    <option value="negative">Negative (1-2 stars)</option>
+                </select>
+            </div>
+            <div class="feedback-list" id="feedback-list" style="max-height: 500px; overflow-y: auto;">
+                <p style="text-align: center; padding: 20px; color: #666;">Loading feedback...</p>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Current user email (to exclude from recipient lists)
+        const currentUserEmail = "{{ user_email }}";
+        
         // Close modal helper function
         function closeModal(modalId) {
             const modal = document.getElementById(modalId);
@@ -737,6 +759,15 @@
                 });
             });
             
+            // Feedback navigation link handler
+            document.querySelectorAll('a[href="#feedback"]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    openModal('feedback-modal');
+                    loadFeedback();
+                });
+            });
+            
             // Load officials for messaging (admin can message officials too)
             async function loadOfficialsForMessaging() {
                 try {
@@ -751,8 +782,13 @@
                         recipientSelect.remove(1);
                     }
                     
-                    // Add official options
+                    // Add official options (excluding current user)
                     officials.forEach(official => {
+                        // Skip if this is the current user
+                        if (official.email === currentUserEmail) {
+                            return;
+                        }
+                        
                         const option = document.createElement('option');
                         option.value = official.email;
                         option.textContent = `${official.name} (${official.email})`;
@@ -1342,7 +1378,179 @@
                 alert('Error deleting user');
             });
         }
+        
+        // Load feedback
+        async function loadFeedback(filterType = 'all') {
+            try {
+                const response = await fetch('/feedback/recent', {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return;
+                }
+
+                let feedbackList = await response.json();
+                const feedbackContainer = document.getElementById('feedback-list');
+                
+                if (!feedbackContainer) return;
+
+                // Apply filter
+                if (filterType !== 'all') {
+                    if (filterType === 'positive') {
+                        feedbackList = feedbackList.filter(f => f.rating >= 4);
+                    } else if (filterType === 'neutral') {
+                        feedbackList = feedbackList.filter(f => f.rating === 3);
+                    } else if (filterType === 'negative') {
+                        feedbackList = feedbackList.filter(f => f.rating <= 2);
+                    }
+                }
+
+                feedbackContainer.innerHTML = '';
+
+                if (feedbackList.length === 0) {
+                    feedbackContainer.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">No feedback available</p>';
+                } else {
+                    feedbackList.forEach(feedback => {
+                        const feedbackCard = createFeedbackCard(feedback);
+                        feedbackContainer.appendChild(feedbackCard);
+                    });
+                }
+
+            } catch (error) {
+                console.error('Error loading feedback:', error);
+                const feedbackContainer = document.getElementById('feedback-list');
+                if (feedbackContainer) {
+                    feedbackContainer.innerHTML = '<p style="text-align: center; padding: 20px; color: #e74c3c;">Error loading feedback</p>';
+                }
+            }
+        }
+
+        // Create feedback card element
+        function createFeedbackCard(feedback) {
+            const card = document.createElement('div');
+            
+            // Determine card class based on rating
+            let cardClass = 'neutral';
+            let cardColor = '#f0f0f0';
+            if (feedback.rating >= 4) {
+                cardClass = 'positive';
+                cardColor = '#e8f5e9';
+            } else if (feedback.rating <= 2) {
+                cardClass = 'negative';
+                cardColor = '#ffebee';
+            }
+            
+            card.style.cssText = `background: ${cardColor}; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);`;
+            
+            // Generate star rating HTML
+            const starsHTML = generateStars(feedback.rating);
+            
+            // Format date
+            const feedbackDate = new Date(feedback.submitted_date).toLocaleDateString();
+            
+            // Get feedback type display name
+            const feedbackTypeDisplay = getFeedbackTypeDisplay(feedback.feedback_type);
+            
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-user-circle" style="font-size: 32px; color: #0466c8;"></i>
+                        <div>
+                            <h4 style="margin: 0; color: #333;">${feedback.user_name || 'Anonymous'}</h4>
+                            <div style="color: #ffc107; font-size: 14px; margin-top: 4px;">
+                                ${starsHTML}
+                            </div>
+                        </div>
+                    </div>
+                    <span style="color: #999; font-size: 12px;">${feedbackDate}</span>
+                </div>
+                <div>
+                    <p style="margin: 5px 0; font-size: 13px;"><strong>Type:</strong> ${feedbackTypeDisplay}</p>
+                    <p style="margin: 10px 0; color: #555; line-height: 1.5;">${feedback.message}</p>
+                    ${feedback.complaint_id ? `<span style="display: inline-block; background: #0466c8; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; margin-top: 5px;">${feedback.complaint_id}</span>` : ''}
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // Generate star rating HTML
+        function generateStars(rating) {
+            let starsHTML = '';
+            for (let i = 1; i <= 5; i++) {
+                if (i <= rating) {
+                    starsHTML += '<i class="fas fa-star"></i>';
+                } else {
+                    starsHTML += '<i class="far fa-star"></i>';
+                }
+            }
+            return starsHTML;
+        }
+
+        // Get feedback type display name
+        function getFeedbackTypeDisplay(type) {
+            const types = {
+                'complaint-process': 'Complaint Process',
+                'response-time': 'Response Time',
+                'staff-courtesy': 'Staff Courtesy',
+                'resolution-quality': 'Resolution Quality',
+                'system-usability': 'System Usability',
+                'other': 'Other'
+            };
+            return types[type] || type;
+        }
+
+        // Feedback filter change handler
+        const feedbackFilter = document.getElementById('feedback-filter');
+        if (feedbackFilter) {
+            feedbackFilter.addEventListener('change', function(e) {
+                const filterType = e.target.value;
+                loadFeedback(filterType);
+            });
+        }
     </script>
     <script src="{{ url_for('static', filename='js/messaging.js') }}"></script>
+    <script>
+        // Override loadResidentsForMessaging to filter out current user (just in case)
+        const originalLoadResidents = loadResidentsForMessaging;
+        loadResidentsForMessaging = function() {
+            fetch('/residents/list', {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(residents => {
+                const select = document.getElementById('message-recipient-official') || 
+                              document.getElementById('message-recipient');
+                if (!select) return;
+
+                while (select.options.length > 1) {
+                    select.remove(1);
+                }
+
+                residents.forEach(resident => {
+                    // Skip if this is the current user (shouldn't happen for residents, but just in case)
+                    if (resident.email === currentUserEmail) {
+                        return;
+                    }
+                    
+                    const option = document.createElement('option');
+                    option.value = resident.email;
+                    option.textContent = `${resident.name} (${resident.email})`;
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error loading residents:', error));
+        };
+    </script>
 </body>
 </html>

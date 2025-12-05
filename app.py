@@ -50,7 +50,8 @@ def admin_dashboard():
         return redirect(url_for('home'))
     
     return render_template('admindashboard.html',
-                          user_name=session.get('user_name', 'Admin'))
+                          user_name=session.get('user_name', 'Admin'),
+                          user_email=session.get('user_email', ''))
 
 @app.route('/test-api')
 def test_api():

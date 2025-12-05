@@ -492,6 +492,11 @@ def send_message():
         
         if not recipient_uid or not recipient_data:
             return jsonify({'success': False, 'error': 'Recipient not found'}), 404
+        
+        # If sender_data not found, get it directly
+        if not sender_data:
+            sender_ref = db.reference(f'users/{sender_uid}')
+            sender_data = sender_ref.get() or {}
 
         msg = {
             'id': str(uuid.uuid4())[:8],
@@ -516,7 +521,7 @@ def send_message():
         sent_msg = msg.copy()
         sent_msg['isSent'] = True
         sender_ref = db.reference(f'users/{sender_uid}')
-        sender_messages = sender_data.get('messages', []) if sender_data else []
+        sender_messages = sender_data.get('messages', [])
         sender_messages.append(sent_msg)
         sender_ref.child('messages').set(sender_messages)
 

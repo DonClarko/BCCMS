@@ -389,37 +389,6 @@ def get_residents_list():
         print(f"Error getting residents list: {str(e)}")
         return jsonify([])
 
-@admin_bp.route('/messages/list')
-@login_required
-@admin_required
-def get_messages_list():
-    """Get messages for admin from user's messages array"""
-    try:
-        user_uid = session.get('user_uid')
-        if not user_uid:
-            return jsonify([]), 401
-            
-        # Get messages from user's messages array (same as complaints_firebase.py)
-        user_ref = db.reference(f'users/{user_uid}')
-        user = user_ref.get() or {}
-        messages = user.get('messages', [])
-        
-        # Sort by timestamp (newest first)
-        sorted_msgs = sorted(messages, key=lambda m: m.get('timestamp', ''), reverse=True)
-        
-        return jsonify(sorted_msgs)
-        
-    except Exception as e:
-        print(f"Error getting messages: {str(e)}")
-        return jsonify([])
-
-@admin_bp.route('/messages')
-@login_required
-@admin_required
-def get_messages():
-    """Alias for /messages/list for compatibility"""
-    return get_messages_list()
-
 @admin_bp.route('/notifications/list')
 @login_required
 @admin_required

@@ -69,11 +69,13 @@ def submit_feedback():
 @feedback_bp.route('/recent', methods=['GET'])
 @login_required
 def get_recent_feedback():
-    """Get recent feedback (for officials)"""
+    """Get recent feedback (for officials and admins)"""
     try:
-        # Check if user is an official
+        # Check if user is an official or admin
         user_role = session.get('user_role')
-        if user_role != 'official':
+        is_admin = session.get('is_admin', False)
+        
+        if user_role not in ['official', 'admin'] and not is_admin:
             return jsonify({
                 'success': False,
                 'message': 'Access denied'
