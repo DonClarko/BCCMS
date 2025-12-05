@@ -61,23 +61,23 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <h3>Total Complaints</h3>
-                    <p class="stat-number">142</p>
-                    <p class="stat-change"><i class="fas fa-arrow-up"></i> 12% from last month</p>
+                    <p class="stat-number">--</p>
+                    <p class="stat-change"><i class="fas fa-spinner fa-spin"></i> Loading...</p>
                 </div>
                 <div class="stat-card">
                     <h3>Pending</h3>
-                    <p class="stat-number">28</p>
-                    <p class="stat-urgent"><i class="fas fa-exclamation-triangle"></i> 5 urgent</p>
+                    <p class="stat-number">--</p>
+                    <p class="stat-urgent"><i class="fas fa-exclamation-triangle"></i> -- urgent</p>
                 </div>
                 <div class="stat-card">
                     <h3>Resolved</h3>
-                    <p class="stat-number">89</p>
-                    <p class="stat-change"><i class="fas fa-arrow-up"></i> 8% from last month</p>
+                    <p class="stat-number">--</p>
+                    <p class="stat-change"><i class="fas fa-spinner fa-spin"></i> Loading...</p>
                 </div>
                 <div class="stat-card">
                     <h3>Avg. Resolution Time</h3>
-                    <p class="stat-number">3.2 days</p>
-                    <p class="stat-change"><i class="fas fa-arrow-down"></i> 0.5 days from last month</p>
+                    <p class="stat-number">-- days</p>
+                    <p class="stat-change"><i class="fas fa-spinner fa-spin"></i> Loading...</p>
                 </div>
             </div>
 
@@ -856,13 +856,48 @@ function loadStats() {
         .then(data => {
             const statCards = document.querySelectorAll('.stat-card');
             if (statCards.length >= 4) {
-                document.querySelector('.stat-card:nth-child(1) .stat-number').textContent = data.total;
-                document.querySelector('.stat-card:nth-child(2) .stat-number').textContent = data.pending + data.new;
-                document.querySelector('.stat-card:nth-child(2) .stat-urgent').innerHTML = 
+                // Total Complaints
+                const totalCard = document.querySelector('.stat-card:nth-child(1)');
+                totalCard.querySelector('.stat-number').textContent = data.total;
+                const totalChange = data.change_from_last_month?.total || 0;
+                const totalChangeEl = totalCard.querySelector('.stat-change');
+                if (totalChangeEl) {
+                    const arrowIcon = totalChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                    const changeColor = totalChange >= 0 ? '#28a745' : '#dc3545';
+                    totalChangeEl.innerHTML = `<i class="fas ${arrowIcon}" style="color: ${changeColor}"></i> ${Math.abs(totalChange)}% from last month`;
+                    totalChangeEl.style.color = changeColor;
+                }
+                
+                // Pending
+                const pendingCard = document.querySelector('.stat-card:nth-child(2)');
+                pendingCard.querySelector('.stat-number').textContent = data.pending + data.new;
+                pendingCard.querySelector('.stat-urgent').innerHTML = 
                     `<i class="fas fa-exclamation-triangle"></i> ${data.urgent_pending} urgent`;
-                document.querySelector('.stat-card:nth-child(3) .stat-number').textContent = data.resolved;
-                document.querySelector('.stat-card:nth-child(4) .stat-number').textContent = 
-                    `${data.avg_resolution_time} days`;
+                
+                // Resolved
+                const resolvedCard = document.querySelector('.stat-card:nth-child(3)');
+                resolvedCard.querySelector('.stat-number').textContent = data.resolved;
+                const resolvedChange = data.change_from_last_month?.resolved || 0;
+                const resolvedChangeEl = resolvedCard.querySelector('.stat-change');
+                if (resolvedChangeEl) {
+                    const arrowIcon = resolvedChange >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                    const changeColor = resolvedChange >= 0 ? '#28a745' : '#dc3545';
+                    resolvedChangeEl.innerHTML = `<i class="fas ${arrowIcon}" style="color: ${changeColor}"></i> ${Math.abs(resolvedChange)}% from last month`;
+                    resolvedChangeEl.style.color = changeColor;
+                }
+                
+                // Avg Resolution Time
+                const avgCard = document.querySelector('.stat-card:nth-child(4)');
+                avgCard.querySelector('.stat-number').textContent = `${data.avg_resolution_time} days`;
+                const resTimeChange = data.change_from_last_month?.resolution_time || 0;
+                const resTimeChangeEl = avgCard.querySelector('.stat-change');
+                if (resTimeChangeEl) {
+                    // For resolution time, lower is better, so arrow down is green
+                    const arrowIcon = resTimeChange >= 0 ? 'fa-arrow-down' : 'fa-arrow-up';
+                    const changeColor = resTimeChange >= 0 ? '#28a745' : '#dc3545';
+                    resTimeChangeEl.innerHTML = `<i class="fas ${arrowIcon}" style="color: ${changeColor}"></i> ${Math.abs(resTimeChange)} days from last month`;
+                    resTimeChangeEl.style.color = changeColor;
+                }
             }
                 
             // Update sidebar badges

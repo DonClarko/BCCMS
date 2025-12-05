@@ -100,7 +100,7 @@ nav {
 }
 
 .hero {
-    background: linear-gradient(rgba(29, 78, 216, 0.9), rgba(59, 130, 246, 0.85)), url('/api/placeholder/1200/800') no-repeat center center/cover;
+    background: linear-gradient(135deg, rgba(29, 78, 216, 0.95), rgba(59, 130, 246, 0.9));
     height: 100vh;
     display: flex;
     align-items: center;
@@ -477,7 +477,7 @@ nav {
 
 .cta {
     padding: 100px 0;
-    background: linear-gradient(rgba(29, 78, 216, 0.9), rgba(59, 130, 246, 0.85)), url('/api/placeholder/1200/800') no-repeat center center/cover;
+    background: linear-gradient(135deg, rgba(29, 78, 216, 0.95), rgba(59, 130, 246, 0.9));
     color: white;
     text-align: center;
 }

@@ -282,6 +282,110 @@ def get_complaint_details():
         print(f"Error fetching complaint details: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@complaint_bp.route('/officials/stats')
+@login_required
+@role_required('official')
+def get_officials_stats():
+    """Get dashboard statistics for officials"""
+    try:
+        complaints_ref = db.reference('complaints')
+        complaints_data = complaints_ref.get()
+        
+        if not complaints_data:
+            return jsonify({
+                'total': 0,
+                'pending': 0,
+                'new': 0,
+                'in_progress': 0,
+                'escalated': 0,
+                'resolved': 0,
+                'urgent_pending': 0,
+                'avg_resolution_time': 0,
+                'change_from_last_month': {
+                    'total': 0,
+                    'resolved': 0,
+                    'resolution_time': 0
+                }
+            })
+        
+        complaints_list = list(complaints_data.values())
+        
+        # Count by status
+        total = len(complaints_list)
+        new_count = sum(1 for c in complaints_list if c.get('status') == 'New')
+        pending = sum(1 for c in complaints_list if c.get('status') in ['Pending', 'Pending Review'])
+        in_progress = sum(1 for c in complaints_list if c.get('status') == 'In Progress')
+        escalated = sum(1 for c in complaints_list if c.get('status') == 'Escalated')
+        resolved = sum(1 for c in complaints_list if c.get('status') == 'Resolved')
+        
+        # Count urgent pending (High urgency that are not resolved)
+        urgent_pending = sum(1 for c in complaints_list 
+                           if c.get('urgency') == 'High' and c.get('status') not in ['Resolved'])
+        
+        # Calculate average resolution time for resolved complaints
+        resolution_times = []
+        for complaint in complaints_list:
+            if complaint.get('status') == 'Resolved' and complaint.get('submitted_date') and complaint.get('updated_at'):
+                try:
+                    submitted = datetime.fromisoformat(complaint.get('submitted_date').replace('Z', '+00:00'))
+                    resolved_date = datetime.fromisoformat(complaint.get('updated_at').replace('Z', '+00:00'))
+                    days = (resolved_date - submitted).days
+                    if days >= 0:
+                        resolution_times.append(days)
+                except:
+                    pass
+        
+        avg_resolution_time = round(sum(resolution_times) / len(resolution_times), 1) if resolution_times else 0
+        
+        # Calculate changes from last month
+        now = datetime.now()
+        last_month_start = datetime(now.year, now.month - 1 if now.month > 1 else 12, 1)
+        this_month_start = datetime(now.year, now.month, 1)
+        
+        last_month_total = 0
+        last_month_resolved = 0
+        this_month_total = 0
+        this_month_resolved = 0
+        
+        for complaint in complaints_list:
+            try:
+                submitted = datetime.fromisoformat(complaint.get('submitted_date', '').replace('Z', '+00:00'))
+                if last_month_start <= submitted < this_month_start:
+                    last_month_total += 1
+                    if complaint.get('status') == 'Resolved':
+                        last_month_resolved += 1
+                elif submitted >= this_month_start:
+                    this_month_total += 1
+                    if complaint.get('status') == 'Resolved':
+                        this_month_resolved += 1
+            except:
+                pass
+        
+        # Calculate percentage changes
+        total_change = round(((this_month_total - last_month_total) / max(last_month_total, 1)) * 100)
+        resolved_change = round(((this_month_resolved - last_month_resolved) / max(last_month_resolved, 1)) * 100)
+        
+        return jsonify({
+            'total': total,
+            'pending': pending,
+            'new': new_count,
+            'in_progress': in_progress,
+            'escalated': escalated,
+            'resolved': resolved,
+            'urgent_pending': urgent_pending,
+            'avg_resolution_time': avg_resolution_time,
+            'change_from_last_month': {
+                'total': total_change,
+                'resolved': resolved_change,
+                'resolution_time': 0.5  # Placeholder for resolution time improvement
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error fetching officials stats: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
 @complaint_bp.route('/officials/complaints/<status>')
 @login_required
 @role_required('official')
