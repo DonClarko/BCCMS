@@ -21,14 +21,30 @@ def initialize_firebase():
         firebase_admin.get_app()
     except ValueError:
         # Firebase not initialized yet
-        if not os.path.exists(FIREBASE_CREDENTIALS_PATH):
-            raise FileNotFoundError(
-                f"Firebase credentials file not found at {FIREBASE_CREDENTIALS_PATH}. "
-                "Please download your service account key from Firebase Console and save it as firebase-key.json"
-            )
+        cred = None
+        
+        # Option 1: Check for environment variable (for cloud deployment)
+        firebase_creds_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON')
+        if firebase_creds_json:
+            try:
+                cred_dict = json.loads(firebase_creds_json)
+                cred = credentials.Certificate(cred_dict)
+                print("Using Firebase credentials from environment variable")
+            except json.JSONDecodeError:
+                print("Invalid JSON in GOOGLE_APPLICATION_CREDENTIALS_JSON")
+        
+        # Option 2: Use local file (for local development)
+        if cred is None:
+            if not os.path.exists(FIREBASE_CREDENTIALS_PATH):
+                raise FileNotFoundError(
+                    f"Firebase credentials file not found at {FIREBASE_CREDENTIALS_PATH}. "
+                    "Please download your service account key from Firebase Console and save it as firebase-key.json "
+                    "OR set the GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable."
+                )
+            cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+            print("Using Firebase credentials from local file")
         
         # Initialize Firebase Admin SDK (no databaseURL needed for Firestore)
-        cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
         firebase_admin.initialize_app(cred)
         print("Firebase initialized successfully with Firestore!")
     

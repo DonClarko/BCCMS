@@ -4,12 +4,13 @@ from complaints_firebase import complaint_bp
 from feedback_firebase import feedback_bp
 from admin_firebase import admin_bp
 from firebase_config import initialize_firebase
+import os
 
 # Initialize Firebase
 initialize_firebase()
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-here'  # Change this to a random secure key in production
+app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')  # Use environment variable in production
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_PERMANENT'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # Session timeout in seconds (30 minutes)
@@ -66,5 +67,9 @@ def login_redirect():
 def signup_redirect():
     return redirect(url_for('auth.show_auth', form_type='signup'))
 
+# For Vercel serverless deployment
+application = app
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
