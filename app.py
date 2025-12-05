@@ -57,5 +57,14 @@ def admin_dashboard():
 def test_api():
     return render_template('test_api.html')
 
+# Redirect routes for /login and /signup to auth blueprint
+@app.route('/login')
+def login_redirect():
+    return redirect(url_for('auth.show_auth', form_type='login'))
+
+@app.route('/signup')
+def signup_redirect():
+    return redirect(url_for('auth.show_auth', form_type='signup'))
+
 if __name__ == '__main__':
     app.run(debug=True)
