@@ -278,13 +278,20 @@
     <div id="message-modal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 600px;">
             <span class="close-btn" onclick="closeModal('message-modal')">&times;</span>
-            <h2><i class="fas fa-envelope"></i> Send Message to Resident</h2>
+            <h2><i class="fas fa-envelope"></i> Send Message</h2>
             <form id="message-form">
                 <input type="hidden" id="message-complaint-id" name="complaint_id">
                 <div class="form-group">
-                    <label for="message-recipient">Select Resident:</label>
+                    <label for="recipient-type">Recipient Type:</label>
+                    <select id="recipient-type" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="resident">Resident</option>
+                        <option value="official">Barangay Official</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="message-recipient">Select Recipient:</label>
                     <select id="message-recipient" name="recipient" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                        <option value="">-- Choose a resident --</option>
+                        <option value="">-- Choose a recipient --</option>
                         <!-- Options will be populated dynamically -->
                     </select>
                 </div>
@@ -730,6 +737,32 @@
                 });
             });
             
+            // Load officials for messaging (admin can message officials too)
+            async function loadOfficialsForMessaging() {
+                try {
+                    const response = await fetch('/officials/list');
+                    const officials = await response.json();
+                    
+                    const recipientSelect = document.getElementById('message-recipient');
+                    if (!recipientSelect) return;
+                    
+                    // Clear existing options except the first one
+                    while (recipientSelect.options.length > 1) {
+                        recipientSelect.remove(1);
+                    }
+                    
+                    // Add official options
+                    officials.forEach(official => {
+                        const option = document.createElement('option');
+                        option.value = official.email;
+                        option.textContent = `${official.name} (${official.email})`;
+                        recipientSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Error loading officials:', error);
+                }
+            }
+            
             // Compose message button handler
             const composeMessageBtn = document.getElementById('compose-message-btn-admin');
             if (composeMessageBtn) {
@@ -737,7 +770,13 @@
                     closeModal('messages-modal');
                     openModal('message-modal');
                     
-                    // Load residents using shared function from messaging.js
+                    // Reset recipient type to resident
+                    const recipientType = document.getElementById('recipient-type');
+                    if (recipientType) {
+                        recipientType.value = 'resident';
+                    }
+                    
+                    // Load residents by default
                     if (typeof loadResidentsForMessaging === 'function') {
                         loadResidentsForMessaging();
                     }
@@ -745,6 +784,30 @@
                     // Load all complaints initially using shared function
                     if (typeof loadComplaintsForMessaging === 'function') {
                         loadComplaintsForMessaging(false); // false = not official dashboard
+                    }
+                });
+            }
+            
+            // Add event listener for recipient type change
+            const recipientTypeSelect = document.getElementById('recipient-type');
+            if (recipientTypeSelect) {
+                recipientTypeSelect.addEventListener('change', function() {
+                    const selectedType = this.value;
+                    
+                    if (selectedType === 'resident') {
+                        // Load residents
+                        if (typeof loadResidentsForMessaging === 'function') {
+                            loadResidentsForMessaging();
+                        }
+                        // Show complaint dropdown
+                        const complaintGroup = document.getElementById('message-complaint-select')?.closest('.form-group');
+                        if (complaintGroup) complaintGroup.style.display = 'block';
+                    } else if (selectedType === 'official') {
+                        // Load officials
+                        loadOfficialsForMessaging();
+                        // Hide complaint dropdown (officials don't have complaints)
+                        const complaintGroup = document.getElementById('message-complaint-select')?.closest('.form-group');
+                        if (complaintGroup) complaintGroup.style.display = 'none';
                     }
                 });
             }

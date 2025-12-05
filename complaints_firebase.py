@@ -396,6 +396,7 @@ def update_complaint():
 @login_required
 def get_officials_list():
     try:
+        # Allow both residents and admins to message officials
         users_ref = db.reference('users')
         users = users_ref.get() or {}
         officials = []
@@ -414,12 +415,18 @@ def get_officials_list():
         return jsonify([]), 500
 
 
-# Get list of all residents for messaging (officials only)
+# Get list of all residents for messaging (officials and admins)
 @complaint_bp.route('/residents/list')
 @login_required
-@role_required('official')
 def get_residents_list():
     try:
+        # Allow both officials and admins to access this endpoint
+        user_role = session.get('user_role')  # Fixed: changed from 'role' to 'user_role'
+        is_admin = session.get('is_admin', False)
+        
+        if user_role not in ['official', 'admin'] and not is_admin:
+            return jsonify({'error': 'Unauthorized'}), 403
+            
         users_ref = db.reference('users')
         users = users_ref.get() or {}
         residents = []
