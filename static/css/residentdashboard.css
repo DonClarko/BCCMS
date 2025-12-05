@@ -56,15 +56,27 @@ nav {
 .logo {
     font-size: 24px;
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logo-dashboard {
+    font-size: 16px;
+    font-weight: 500;
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: 6px 14px;
+    border-radius: 5px;
 }
 
 .menu {
     display: flex;
     list-style: none;
+    align-items: center;
 }
 
 .menu li {
-    margin-left: 25px;
+    margin-left: 15px;
     position: relative;
 }
 
@@ -72,14 +84,60 @@ nav {
     color: var(--white);
     text-decoration: none;
     font-weight: 500;
-    transition: opacity 0.3s;
+    transition: all 0.3s;
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 8px 12px;
+    border-radius: 5px;
 }
 
 .menu a:hover {
-    opacity: 0.9;
+    background-color: var(--primary-dark);
+}
+
+/* Icon buttons in navbar */
+.icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.15);
+    padding: 0 !important;
+    position: relative;
+}
+
+.icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.icon-btn i {
+    font-size: 16px;
+}
+
+.icon-btn .notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--danger-color);
+    border-radius: 50%;
+    color: white;
+}
+
+.logout-icon {
+    background-color: var(--danger-color) !important;
+}
+
+.logout-icon:hover {
+    background-color: #d62828 !important;
 }
 
 .user-menu .dropdown-content {
@@ -136,6 +194,21 @@ nav {
 
 .mobile-menu a:last-child {
     border-bottom: none;
+}
+
+.mobile-menu .logout-btn {
+    background-color: var(--danger-color);
+    color: var(--white);
+    border-radius: 5px;
+    padding: 12px 15px;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mobile-menu .logout-btn:hover {
+    background-color: #d62828;
 }
 
 /* Button Styles */
