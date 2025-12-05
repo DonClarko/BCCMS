@@ -687,3 +687,84 @@ def mark_notification_read():
         return jsonify({'success': True})
     
     return jsonify({'success': False, 'error': 'Notification not found'}), 404
+
+
+@complaint_bp.route('/resident/stats')
+@login_required
+def get_resident_stats():
+    """Get statistics for resident dashboard"""
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        # Get complaints from Firebase
+        complaints_ref = db.reference('complaints')
+        complaints_data = complaints_ref.get() or {}
+        
+        # Filter user's complaints
+        user_complaints = []
+        for complaint_id, complaint in complaints_data.items():
+            if complaint.get('user_email') == user_email:
+                complaint['id'] = complaint_id
+                user_complaints.append(complaint)
+        
+        stats = {
+            'open_cases': 0,
+            'urgent_open': 0,
+            'resolved': 0,
+            'avg_resolution': 0,
+            'resolution_times': []
+        }
+        
+        for complaint in user_complaints:
+            status = complaint.get('status', '')
+            if status != 'Resolved' and status != 'Closed':
+                stats['open_cases'] += 1
+                urgency = complaint.get('urgency', 'Low')
+                if urgency == 'High':
+                    stats['urgent_open'] += 1
+            elif status == 'Resolved':
+                stats['resolved'] += 1
+                # Calculate resolution time if we have both dates
+                submitted_date = complaint.get('submitted_date')
+                updates = complaint.get('updates', [])
+                
+                if submitted_date and updates:
+                    # Find when it was resolved
+                    resolved_date = None
+                    for update in reversed(updates):
+                        if update.get('to_status') == 'Resolved':
+                            resolved_date = update.get('timestamp')
+                            break
+                    
+                    if resolved_date:
+                        try:
+                            submitted = datetime.fromisoformat(submitted_date.replace('Z', '+00:00'))
+                            resolved = datetime.fromisoformat(resolved_date.replace('Z', '+00:00'))
+                            days = (resolved - submitted).days
+                            if days >= 0:
+                                stats['resolution_times'].append(days)
+                        except Exception as e:
+                            print(f"Error calculating resolution time: {e}")
+        
+        # Calculate average resolution time
+        if stats['resolution_times']:
+            stats['avg_resolution'] = round(sum(stats['resolution_times']) / len(stats['resolution_times']), 1)
+        else:
+            stats['avg_resolution'] = 0
+        
+        # Remove resolution_times from response (not needed in frontend)
+        del stats['resolution_times']
+        
+        return jsonify(stats)
+        
+    except Exception as e:
+        print(f"Error getting resident stats: {e}")
+        return jsonify({
+            'open_cases': 0,
+            'urgent_open': 0,
+            'resolved': 0,
+            'avg_resolution': 0
+        })
+
