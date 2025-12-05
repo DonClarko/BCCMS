@@ -217,7 +217,8 @@ def get_admin_users():
                 'name': user.get('full_name', 'Unknown'),
                 'email': user.get('email', ''),
                 'role': user.get('role', 'resident'),
-                'is_admin': user.get('is_admin', False)
+                'is_admin': user.get('is_admin', False),
+                'status': user.get('status', 'approved')
             })
         
         # Sort by name
@@ -606,3 +607,52 @@ def get_pending_count():
     except Exception as e:
         print(f"Error getting pending count: {str(e)}")
         return jsonify({'count': 0})
+
+@admin_bp.route('/admin/user/toggle-block', methods=['POST'])
+@login_required
+@admin_required
+def toggle_block_user():
+    """Block or unblock a user"""
+    try:
+        data = request.get_json()
+        uid = data.get('uid')
+        action = data.get('action')  # 'block' or 'unblock'
+        
+        if not uid or action not in ['block', 'unblock']:
+            return jsonify({'success': False, 'message': 'Invalid request'}), 400
+        
+        # Get user reference
+        user_ref = db.reference(f'users/{uid}')
+        user_data = user_ref.get()
+        
+        if not user_data:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        # Don't allow blocking admins
+        if user_data.get('is_admin', False):
+            return jsonify({'success': False, 'message': 'Cannot block admin users'}), 400
+        
+        # Don't allow blocking yourself
+        if uid == session.get('user_uid'):
+            return jsonify({'success': False, 'message': 'Cannot block yourself'}), 400
+        
+        if action == 'block':
+            user_ref.update({
+                'status': 'blocked',
+                'blocked_at': datetime.now().isoformat(),
+                'blocked_by': session.get('user_uid')
+            })
+            message = f'User {user_data.get("full_name", "Unknown")} has been blocked'
+        else:
+            user_ref.update({
+                'status': 'approved',
+                'unblocked_at': datetime.now().isoformat(),
+                'unblocked_by': session.get('user_uid')
+            })
+            message = f'User {user_data.get("full_name", "Unknown")} has been unblocked'
+        
+        return jsonify({'success': True, 'message': message})
+        
+    except Exception as e:
+        print(f"Error toggling block status: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500

@@ -1149,6 +1149,12 @@
                             roleText = 'Admin';
                         }
                         
+                        // Determine if user is blocked
+                        const isBlocked = user.status === 'blocked';
+                        const blockBtnClass = isBlocked ? 'unblock' : 'block';
+                        const blockBtnIcon = isBlocked ? 'fa-unlock' : 'fa-ban';
+                        const blockBtnTitle = isBlocked ? 'Unblock User' : 'Block User';
+                        
                         row.innerHTML = `
                             <td>${user.name}</td>
                             <td>${user.email}</td>
@@ -1156,6 +1162,8 @@
                             <td>
                                 <div class="action-buttons">
                                     <button class="btn view" onclick="viewUserDetails('${user.uid}')" title="View Details"><i class="fas fa-eye"></i></button>
+                                    <button class="btn message" onclick="openMessageToUser('${user.uid}', '${user.name}', '${user.email}', '${user.role}')" title="Send Message"><i class="fas fa-envelope"></i></button>
+                                    <button class="btn ${blockBtnClass}" onclick="toggleBlockUser('${user.uid}', '${user.name}', ${isBlocked})" title="${blockBtnTitle}"><i class="fas ${blockBtnIcon}"></i></button>
                                     <button class="btn delete" onclick="deleteUser('${user.uid}', '${user.name}')"><i class="fas fa-trash"></i></button>
                                 </div>
                             </td>
@@ -1540,7 +1548,8 @@
                         
                         // Determine status display
                         let statusDisplay = user.status ? user.status.replace('_', ' ').charAt(0).toUpperCase() + user.status.slice(1).replace('_', ' ') : 'Approved';
-                        let statusColor = user.status === 'approved' ? '#28a745' : '#ffc107';
+                        let statusColor = user.status === 'approved' ? '#28a745' : (user.status === 'blocked' ? '#dc3545' : '#ffc107');
+                        let statusIcon = user.status === 'blocked' ? 'fa-ban' : 'fa-check-circle';
                         
                         document.getElementById('user-details-content').innerHTML = `
                             <div style="display: flex; flex-direction: column; gap: 15px;">
@@ -1570,10 +1579,10 @@
                                     </div>
                                     
                                     <div style="display: flex; align-items: center; gap: 10px;">
-                                        <i class="fas fa-check-circle" style="color: ${statusColor}; width: 20px;"></i>
+                                        <i class="fas ${statusIcon}" style="color: ${statusColor}; width: 20px;"></i>
                                         <div>
                                             <small style="color: #999;">Status</small>
-                                            <p style="margin: 0; color: #333;">${statusDisplay}</p>
+                                            <p style="margin: 0; color: ${statusColor}; font-weight: ${user.status === 'blocked' ? 'bold' : 'normal'};">${statusDisplay}</p>
                                         </div>
                                     </div>
                                     
@@ -1635,6 +1644,104 @@
             .catch(error => {
                 console.error('Error:', error);
                 alert('Error deleting user');
+            });
+        }
+
+        // Open message modal for a specific user
+        function openMessageToUser(userId, userName, userEmail, userRole) {
+            openModal('message-modal');
+            
+            const recipientTypeSelect = document.getElementById('recipient-type');
+            const recipientSelect = document.getElementById('message-recipient');
+            const complaintGroup = document.getElementById('message-complaint-select')?.closest('.form-group');
+            
+            // Always hide complaint dropdown when messaging from User Management
+            if (complaintGroup) complaintGroup.style.display = 'none';
+            
+            // Set the recipient type based on user role
+            if (userRole === 'official') {
+                recipientTypeSelect.value = 'official';
+                
+                // Load officials and select the specific one
+                fetch('/admin/users')
+                    .then(response => response.json())
+                    .then(users => {
+                        const officials = users.filter(u => u.role === 'official');
+                        recipientSelect.innerHTML = '<option value="">-- Choose a recipient --</option>';
+                        officials.forEach(user => {
+                            const option = document.createElement('option');
+                            option.value = user.email;  // Use email as value for backend compatibility
+                            option.textContent = `${user.name} (${user.email})`;
+                            if (user.email === userEmail) {
+                                option.selected = true;
+                            }
+                            recipientSelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error loading officials:', error);
+                    });
+            } else {
+                recipientTypeSelect.value = 'resident';
+                
+                // Load residents and select the specific one
+                fetch('/admin/users')
+                    .then(response => response.json())
+                    .then(users => {
+                        const residents = users.filter(u => u.role === 'resident');
+                        recipientSelect.innerHTML = '<option value="">-- Choose a recipient --</option>';
+                        residents.forEach(user => {
+                            const option = document.createElement('option');
+                            option.value = user.email;  // Use email as value for backend compatibility
+                            option.textContent = `${user.name} (${user.email})`;
+                            if (user.email === userEmail) {
+                                option.selected = true;
+                            }
+                            recipientSelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error loading residents:', error);
+                    });
+            }
+            
+            // Clear and focus on subject
+            document.getElementById('message-subject').value = '';
+            document.getElementById('message-content').value = '';
+            document.getElementById('message-subject').focus();
+        }
+
+        // Toggle block/unblock user
+        function toggleBlockUser(userId, userName, isCurrentlyBlocked) {
+            const action = isCurrentlyBlocked ? 'unblock' : 'block';
+            const actionText = isCurrentlyBlocked ? 'unblock' : 'block';
+            
+            if (!confirm(`Are you sure you want to ${actionText} user: ${userName}?`)) {
+                return;
+            }
+
+            fetch('/admin/user/toggle-block', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    uid: userId,
+                    action: action 
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    loadUsers();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error toggling user block status');
             });
         }
         
