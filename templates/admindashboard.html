@@ -107,7 +107,13 @@
                 <div id="complaints-management-section" class="quick-nav-content">
                     <div class="section-header">
                         <h2>Complaint Management</h2>
-                        <a href="#" class="view-all">View All</a>
+                        <select id="complaint-status-filter" class="role-filter" onchange="filterComplaintsByStatus()">
+                            <option value="all">All Status</option>
+                            <option value="pending">Pending Review</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="escalated">Escalated</option>
+                        </select>
                     </div>
                     <div class="table-container">
                         <table>
@@ -159,7 +165,11 @@
                 <div id="user-management-section" class="quick-nav-content">
                     <div class="section-header">
                         <h2>User Management</h2>
-                        <a href="#" class="view-all">View All</a>
+                        <select id="user-role-filter" class="role-filter" onchange="filterUsersByRole()">
+                            <option value="all">All Roles</option>
+                            <option value="resident">Resident</option>
+                            <option value="official">Official</option>
+                        </select>
                     </div>
                     <div class="table-container">
                         <table>
@@ -227,6 +237,7 @@
         </div>
     </footer>
 
+    <!-- User Management Full Modal -->
     <!-- User Details Modal -->
     <div id="user-details-modal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 500px;">
@@ -1110,57 +1121,16 @@
                 });
         }
 
+        // Store all complaints for filtering
+        let allComplaints = [];
+
         // Load complaints
         function loadComplaints() {
             fetch('/admin/complaints')
                 .then(response => response.json())
                 .then(complaints => {
-                    const tbody = document.getElementById('complaints-table-body');
-                    
-                    if (complaints.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" class="loading">No complaints found</td></tr>';
-                        return;
-                    }
-
-                    tbody.innerHTML = '';
-                    complaints.forEach(complaint => {
-                        const row = document.createElement('tr');
-                        
-                        // Format date
-                        let formattedDate = 'N/A';
-                        if (complaint.date) {
-                            try {
-                                const date = new Date(complaint.date);
-                                formattedDate = date.toLocaleDateString('en-US', { 
-                                    year: 'numeric', 
-                                    month: 'short', 
-                                    day: 'numeric' 
-                                });
-                            } catch (e) {
-                                formattedDate = complaint.date;
-                            }
-                        }
-
-                        // Determine status class
-                        const statusClass = complaint.status.toLowerCase().replace(/\s+/g, '-');
-                        
-                        row.innerHTML = `
-                            <td>${complaint.id}</td>
-                            <td>${complaint.title}</td>
-                            <td>${complaint.resident}</td>
-                            <td>${formattedDate}</td>
-                            <td><span class="status ${statusClass}">${complaint.status}</span></td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button class="btn view" onclick="viewComplaint('${complaint.id}')" title="View Details"><i class="fas fa-eye"></i></button>
-                                    <button class="btn edit" onclick="updateComplaintStatus('${complaint.id}')" title="Update Status"><i class="fas fa-edit"></i></button>
-                                    <button class="btn message" onclick="messageResident('${complaint.id}', '${complaint.resident_email}')" title="Message Resident"><i class="fas fa-envelope"></i></button>
-                                    <button class="btn delete" onclick="deleteComplaint('${complaint.id}')" title="Delete Complaint"><i class="fas fa-trash"></i></button>
-                                </div>
-                            </td>
-                        `;
-                        tbody.appendChild(row);
-                    });
+                    allComplaints = complaints; // Store for filtering
+                    displayComplaints(complaints);
                 })
                 .catch(error => {
                     console.error('Error loading complaints:', error);
@@ -1169,57 +1139,145 @@
                 });
         }
 
+        // Display complaints in the table
+        function displayComplaints(complaints) {
+            const tbody = document.getElementById('complaints-table-body');
+            
+            if (complaints.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">No complaints found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            complaints.forEach(complaint => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-status', complaint.status.toLowerCase().replace(/\s+/g, '-'));
+                
+                // Format date
+                let formattedDate = 'N/A';
+                if (complaint.date) {
+                    try {
+                        const date = new Date(complaint.date);
+                        formattedDate = date.toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                        });
+                    } catch (e) {
+                        formattedDate = complaint.date;
+                    }
+                }
+
+                // Determine status class
+                const statusClass = complaint.status.toLowerCase().replace(/\s+/g, '-');
+                
+                row.innerHTML = `
+                    <td>${complaint.id}</td>
+                    <td>${complaint.title}</td>
+                    <td>${complaint.resident}</td>
+                    <td>${formattedDate}</td>
+                    <td><span class="status ${statusClass}">${complaint.status}</span></td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn view" onclick="viewComplaint('${complaint.id}')" title="View Details"><i class="fas fa-eye"></i></button>
+                            <button class="btn edit" onclick="updateComplaintStatus('${complaint.id}')" title="Update Status"><i class="fas fa-edit"></i></button>
+                            <button class="btn message" onclick="messageResident('${complaint.id}', '${complaint.resident_email}')" title="Message Resident"><i class="fas fa-envelope"></i></button>
+                            <button class="btn delete" onclick="deleteComplaint('${complaint.id}')" title="Delete Complaint"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Filter complaints by status
+        function filterComplaintsByStatus() {
+            const filter = document.getElementById('complaint-status-filter').value;
+            let filteredComplaints = allComplaints;
+            
+            if (filter !== 'all') {
+                filteredComplaints = allComplaints.filter(complaint => {
+                    const statusKey = complaint.status.toLowerCase().replace(/\s+/g, '-');
+                    return statusKey === filter || statusKey.includes(filter);
+                });
+            }
+            
+            displayComplaints(filteredComplaints);
+        }
+
+        // Store all users for filtering
+        let allUsers = [];
+
         // Load users
         function loadUsers() {
             fetch('/admin/users')
                 .then(response => response.json())
                 .then(users => {
-                    const tbody = document.getElementById('users-table-body');
-                    
-                    if (users.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="4" class="loading">No users found</td></tr>';
-                        return;
-                    }
-
-                    tbody.innerHTML = '';
-                    users.forEach(user => {
-                        const row = document.createElement('tr');
-                        
-                        // Determine role display
-                        let roleClass = user.role;
-                        let roleText = user.role;
-                        if (user.is_admin) {
-                            roleClass = 'admin';
-                            roleText = 'Admin';
-                        }
-                        
-                        // Determine if user is blocked
-                        const isBlocked = user.status === 'blocked';
-                        const blockBtnClass = isBlocked ? 'unblock' : 'block';
-                        const blockBtnIcon = isBlocked ? 'fa-unlock' : 'fa-ban';
-                        const blockBtnTitle = isBlocked ? 'Unblock User' : 'Block User';
-                        
-                        row.innerHTML = `
-                            <td>${user.name}</td>
-                            <td>${user.email}</td>
-                            <td><span class="role ${roleClass}">${roleText}</span></td>
-                            <td>
-                                <div class="action-buttons">
-                                    <button class="btn view" onclick="viewUserDetails('${user.uid}')" title="View Details"><i class="fas fa-eye"></i></button>
-                                    <button class="btn message" onclick="openMessageToUser('${user.uid}', '${user.name}', '${user.email}', '${user.role}')" title="Send Message"><i class="fas fa-envelope"></i></button>
-                                    <button class="btn ${blockBtnClass}" onclick="toggleBlockUser('${user.uid}', '${user.name}', ${isBlocked})" title="${blockBtnTitle}"><i class="fas ${blockBtnIcon}"></i></button>
-                                    <button class="btn delete" onclick="deleteUser('${user.uid}', '${user.name}')"><i class="fas fa-trash"></i></button>
-                                </div>
-                            </td>
-                        `;
-                        tbody.appendChild(row);
-                    });
+                    allUsers = users; // Store for filtering
+                    displayUsers(users, 'users-table-body');
                 })
                 .catch(error => {
                     console.error('Error loading users:', error);
                     document.getElementById('users-table-body').innerHTML = 
                         '<tr><td colspan="4" class="loading">Error loading users</td></tr>';
                 });
+        }
+
+        // Display users in a table body
+        function displayUsers(users, tbodyId) {
+            const tbody = document.getElementById(tbodyId);
+            
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="loading">No users found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-role', user.role);
+                
+                // Determine role display
+                let roleClass = user.role;
+                let roleText = user.role;
+                if (user.is_admin) {
+                    roleClass = 'admin';
+                    roleText = 'Admin';
+                }
+                
+                // Determine if user is blocked
+                const isBlocked = user.status === 'blocked';
+                const blockBtnClass = isBlocked ? 'unblock' : 'block';
+                const blockBtnIcon = isBlocked ? 'fa-unlock' : 'fa-ban';
+                const blockBtnTitle = isBlocked ? 'Unblock User' : 'Block User';
+                
+                row.innerHTML = `
+                    <td>${user.name}</td>
+                    <td>${user.email}</td>
+                    <td><span class="role ${roleClass}">${roleText}</span></td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn view" onclick="viewUserDetails('${user.uid}')" title="View Details"><i class="fas fa-eye"></i></button>
+                            <button class="btn message" onclick="openMessageToUser('${user.uid}', '${user.name}', '${user.email}', '${user.role}')" title="Send Message"><i class="fas fa-envelope"></i></button>
+                            <button class="btn ${blockBtnClass}" onclick="toggleBlockUser('${user.uid}', '${user.name}', ${isBlocked})" title="${blockBtnTitle}"><i class="fas ${blockBtnIcon}"></i></button>
+                            <button class="btn delete" onclick="deleteUser('${user.uid}', '${user.name}')"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Filter users by role
+        function filterUsersByRole() {
+            const filter = document.getElementById('user-role-filter').value;
+            let filteredUsers = allUsers;
+            
+            if (filter !== 'all') {
+                filteredUsers = allUsers.filter(user => user.role === filter);
+            }
+            
+            displayUsers(filteredUsers, 'users-table-body');
         }
 
         // Load pending registrations
