@@ -115,6 +115,11 @@ def login():
             flash('Your registration was not approved. Please contact the admin for more information.', 'error')
             return redirect(url_for('auth.show_auth', form_type='login'))
         
+        # Check if account is blocked
+        if user_info.get('status') == 'blocked':
+            flash('Your account has been blocked. Please contact the admin for assistance.', 'error')
+            return redirect(url_for('auth.show_auth', form_type='login'))
+        
         # Check role
         if user_info.get('role') != role and not user_info.get('is_admin', False):
             flash(f'Please login as {user_info["role"]}', 'error')
