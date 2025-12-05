@@ -13,6 +13,9 @@
     <script src="{{ url_for('static', filename='js/firebaseConfig.js') }}"></script>
 </head>
 <body>
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
+    
     <!-- Header Navigation -->
     <header>
         <div class="container">
@@ -24,6 +27,11 @@
                     <li><a href="#feedback" class="icon-btn" title="Feedback"><i class="fas fa-comment-alt"></i></a></li>
                     <li><a href="{{ url_for('auth.show_auth', form_type='login') }}" class="icon-btn logout-icon" title="Logout"><i class="fas fa-sign-out-alt"></i></a></li>
                 </ul>
+                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </nav>
         </div>
     </header>
@@ -2007,6 +2015,38 @@
             })
             .catch(error => console.error('Error loading residents:', error));
         };
+    </script>
+    
+    <!-- Mobile Menu Toggle Script -->
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.querySelector('.menu');
+            const overlay = document.querySelector('.mobile-overlay');
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            
+            menu.classList.toggle('active');
+            overlay.classList.toggle('active');
+            toggle.classList.toggle('active');
+            document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : '';
+        }
+        
+        function closeMobileMenu() {
+            const menu = document.querySelector('.menu');
+            const overlay = document.querySelector('.mobile-overlay');
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            
+            menu.classList.remove('active');
+            overlay.classList.remove('active');
+            toggle.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        // Close menu on window resize
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                closeMobileMenu();
+            }
+        });
     </script>
 </body>
 </html>
