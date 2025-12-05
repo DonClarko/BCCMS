@@ -152,7 +152,7 @@ main {
 /* Stats Cards */
 .stats-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
     margin-bottom: 40px;
 }
@@ -284,6 +284,45 @@ main {
 
 .quick-nav-content.active {
     display: block;
+}
+
+/* Analytics Grid */
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.analytics-card {
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    border-left: 4px solid #0466c8;
+}
+
+.analytics-card h3 {
+    color: #0466c8;
+    font-size: 16px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.analytics-card h3 i {
+    font-size: 18px;
+}
+
+.analytics-content p {
+    margin: 10px 0;
+    font-size: 14px;
+    color: #555;
+}
+
+.analytics-content span {
+    font-weight: 600;
+    color: #0466c8;
 }
 
 /* Scrollable table container for quick nav sections */
